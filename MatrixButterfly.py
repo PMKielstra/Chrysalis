@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sp
 from copy import deepcopy
 
-from AbstractButterfly import ButterflyInterface
+from ButterflyInterface import ButterflyInterface
 
 class MatrixButterfly(ButterflyInterface):
     """A class that implements the methods required for butterfly decomposition of matrices.  Takes a truncation tolerance to be used for cutting off SVDs."""
@@ -36,13 +36,10 @@ class MatrixButterfly(ButterflyInterface):
     def join(self, L1, L2):
         return L1 + L2
 
-    def transpose(self, As, ax0, ax1):
+    def transpose(self, A, ax0, ax1):
         axes = [ax0, ax1]
         axes.sort(reverse=True)
-        result = []
-        for A in As:
-            result.append(np.transpose(A, axes=axes))
-        return list(reversed(result))
+        return np.transpose(A, axes=axes)
 
     def contract(self, As):
         As = deepcopy(As) # Avoid accidentally altering the As list

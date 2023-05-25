@@ -15,7 +15,7 @@ N = 512
 A = interaction_matrix(N)
 relative_singular_tolerance = 1e-10
 MB = MatrixButterfly(relative_singular_tolerance)
-butterfly = two_dimensional_butterfly(MB, A, 16, (1, 0))
+butterfly = one_dimensional_butterfly(MB, A, 16, 0, 1)
 
 rel_err = np.linalg.norm(A - MB.apply(butterfly, np.eye(N))) / np.linalg.norm(A)
 fig, axs = plt.subplots(1, len(butterfly))
