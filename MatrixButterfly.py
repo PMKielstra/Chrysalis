@@ -34,6 +34,29 @@ class MatrixButterfly(ButterflyInterface):
                 return interp.reconstruct_interp_matrix(idx, proj).T, interp.reconstruct_skel_matrix(A.T, k, idx).T
         return None # Should be unreachable -- check assert in __init__.
 
+    def find_identity_row(self, U, r):
+        eps = 1e-10
+        comparison_row = np.zeros_like(U[0])
+        comparison_row[r] = 1
+        for i in range(len(U)):
+            if np.linalg.norm(U[i] - comparison_row) < eps:
+                return i
+        return 0
+
+    def build_center(self, K, U, axis):
+        if self.decomposition == 'svd':
+            return U.dot(K) if axis == 0 else K.dot(U)
+        elif self.decomposition == 'id':
+            if axis == 1: # This is easier than writing the code for a general axis
+                K = K.T
+                U = U.T
+            rows = []
+            for r in range(U.shape[0]):
+                rows.append(K[self.find_identity_row(U, r)])
+            final = np.array(rows)
+            return final.T if axis == 1 else final
+        return None
+
     def stack(self, As, axis=0):
         return np.concatenate(As, axis=axis)
 

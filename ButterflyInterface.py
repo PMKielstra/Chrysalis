@@ -15,7 +15,12 @@ class ButterflyInterface(ABC):
 
     @abstractmethod
     def factor(self, A, factor_axis, aux_axis):
-        """Truncated SVD factorization for A.  Return (U.S, V^T) if singular_values_left, otherwise (U, S.V^T)."""
+        """Truncated factorization for A.  Exchanging factor_axis and aux_axis should swap the roles of the two resultant matrices (for instance, going from a QR to an RQ factorization)."""
+        pass
+
+    @abstractmethod
+    def build_center(self, K, U, axis):
+        """Combine a U matrix with a slice K of the original A matrix in order to build a center matrix.  How this is done is highly dependent on the chosen factorization."""
         pass
 
     @abstractmethod
@@ -52,10 +57,10 @@ class ButterflyInterface(ABC):
         """Freebie: apply the As to a particular X."""
         return self.contract(self.compose(As, X, False))
 
-    def multiply(self, A, B):
+    def multiply(self, A, B, axis=0):
         """Freebie: multiply base matrices without using factorizations."""
         empty = self.compose(None, None, False)
-        return self.apply(self.compose(empty, A, False), B)
+        return self.apply(self.compose(empty, A, axis), B)
 
     def recursive_stack(self, us, axes):
         """Freebie: stack recursively in multiple dimensions."""

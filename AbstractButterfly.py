@@ -87,15 +87,18 @@ def two_dimensional_butterfly(bf, A, min_leaf_size, axes):
     right_V_blocks = list_transpose(right_V_blocks)
     x, y = len(left_U_blocks), len(left_U_blocks[0])
     assert (x, y) == (len(right_V_blocks), len(right_V_blocks[0]))
-    central_split = [bf.split(col, axes[1], x)\
-                     for col in bf.split(A, axes[0], y)]
+    central_split = [bf.split(col, axes[0], y)\
+                     for col in bf.split(A, axes[1], x)]
     central = []
     for i in range(x):
         row = []
         for j in range(y):
             U = (bf.transpose(left_U_blocks[i][j], axes[0], axes[1]))
             V = (bf.transpose(right_V_blocks[i][j], axes[0], axes[1]))
-            row.append(bf.multiply(bf.multiply(U, central_split[i][j]), V))
+            UK = bf.build_center(central_split[i][j], U, \
+                                 axes[0])
+            UKV = bf.build_center(UK, V, axes[1])
+            row.append(UKV)
         central.append(row)
 
     central_stacked = bf.diag(central, dimens=2)
