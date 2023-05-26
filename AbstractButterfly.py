@@ -1,15 +1,16 @@
-from math import floor, log2
+from math import floor, ceil, log2
 from copy import deepcopy
+import numpy as np
 import scipy as sp
 
 def tree_depth(bf, A, min_leaf_size, axes):
     return floor(log2(floor(min([bf.shape(A, axis) / min_leaf_size for axis in axes]))))
 
+def list_transpose(l):
+    return list(map(list, zip(*l)))
+
 def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, depth):
     """Carry out a one-dimensional butterfly factorization along factor_axis, splitting along aux_axis."""
-
-    def list_transpose(l):
-        return list(map(list, zip(*l)))
 
     def merge_list_doubles(l):
         return [bf.merge(l[2*i:2*i+2], axis=factor_axis) for i in range(len(l) // 2)]
@@ -49,11 +50,11 @@ def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, de
         diagonalized_Us = [bf.diag(Us[2*i:2*i+2]) for i in range(len(Us) // 2)]
         new_Us = []
         for R_col in Rs:
-            new_Us.append([bf.multiply(U, R) for U, R in zip(diagonalized_Us, R_col)])
+            new_Us.append([bf.multiply(R, U) if singular_values_left else bf.multiply(U, R) for U, R in zip(diagonalized_Us, R_col)])
         return new_Us
 
     # Step 4: process all the blocks
-    for _ in range(min(steps, depth)):
+    for i in range(min(steps, depth)):
         new_U_blocks, new_E_blocks, Rs = [], [], []
         for E_block, U_block in zip(E_blocks, U_blocks):
             Es, R_cols = Es_to_Es_and_Rs(E_block)
@@ -79,7 +80,19 @@ def one_dimensional_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis):
 def two_dimensional_butterfly(bf, A, min_leaf_size, axes):
     assert len(axes) == 2
     depth = tree_depth(bf, A, min_leaf_size, axes)
-    steps = floor(depth / 2)
-    _, left_factorization, left_U_blocks = single_axis_butterfly(bf, A, min_leaf_size, axes[0], axes[1], steps, depth)
-    _, right_factorization, right_V_blocks = single_axis_butterfly(bf, A, min_leaf_size, axes[1], axes[0], steps, depth)
-    
+    _, left_factorization, left_U_blocks = single_axis_butterfly(bf, A, min_leaf_size, axes[0], axes[1], floor(depth / 2), depth)
+    _, right_factorization, right_V_blocks = single_axis_butterfly(bf, A, min_leaf_size, axes[1], axes[0], ceil(depth / 2), depth)
+    right_V_blocks = list_transpose(right_V_blocks)
+    x, y = len(left_U_blocks), len(left_U_blocks[0])
+    assert (x, y) == (len(right_V_blocks), len(right_V_blocks[0]))
+    central_split = [bf.split(col, axes[1], x)\
+                     for col in bf.split(A, axes[0], y)]
+    central = [[0]*y]*x
+    for i in range(x):
+        for j in range(y):
+            central[i][j] = \
+                          bf.multiply(bf.multiply(bf.transpose(left_U_blocks[i][j], axes[0], axes[1]),\
+                                                  central_split[j][i]),\
+                                      bf.transpose(right_V_blocks[i][j], axes[0], axes[1]))
+    central_merged = bf.diag(central, dimens=2)
+    return bf.join(bf.compose(left_factorization, central_merged, False), right_factorization)

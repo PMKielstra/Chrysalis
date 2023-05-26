@@ -11,13 +11,14 @@ def interaction_matrix(N):
     dest = np.array([[1, x] for x in np.linspace(0, 1, N)])
     return np.fromfunction(np.vectorize(lambda i, j: K(source[i], dest[j])), (N, N), dtype=int)
 
-N = 512
+N = 256
 A = interaction_matrix(N)
 relative_singular_tolerance = 1e-10
 MB = MatrixButterfly(relative_singular_tolerance)
-butterfly = one_dimensional_butterfly(MB, A, 16, 0, 1)
+butterfly = two_dimensional_butterfly(MB, A, 4, (0, 1))
 
 rel_err = np.linalg.norm(A - MB.apply(butterfly, np.eye(N))) / np.linalg.norm(A)
+#rel_err = 0
 fig, axs = plt.subplots(1, len(butterfly))
 for L, ax in zip(butterfly, axs):
     ax.spy(L)

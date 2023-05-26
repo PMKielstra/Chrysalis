@@ -19,13 +19,13 @@ class ButterflyInterface(ABC):
         pass
 
     @abstractmethod
-    def diag(self, us):
-        """The diagonal matrix [[us[0], 0, 0, ...], [0, us[1], 0, ...], [0, 0, us[2], ...], ...]."""
+    def diag(self, us, dimens=1):
+        """The diagonal matrix [[us[0], 0, 0, ...], [0, us[1], 0, ...], [0, 0, us[2], ...], ...].  The us here are given as a list."""
         pass
 
     @abstractmethod
     def merge(self, As, axis=0):
-        """Stack the As along the given axis."""
+        """Stack the As along the given axis.  The As here are given as a list."""
         pass
 
     @abstractmethod
@@ -56,3 +56,10 @@ class ButterflyInterface(ABC):
         """Freebie: multiply base matrices without using factorizations."""
         empty = self.compose(None, None, False)
         return self.apply(self.compose(empty, A, False), B)
+
+    def recursive_merge(self, us, axes):
+        """Freebie: merge recursively in multiple dimensions."""
+        if len(axes) == 1:
+            return self.merge(us, axes[0])
+        else:
+            return self.merge([self.recursive_merge(u, axes[1:]) for u in us], axes[0])
