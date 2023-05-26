@@ -14,7 +14,7 @@ class ButterflyInterface(ABC):
         pass
 
     @abstractmethod
-    def factor(self, A, singular_values_left):
+    def factor(self, A, factor_axis, aux_axis):
         """Truncated SVD factorization for A.  Return (U.S, V^T) if singular_values_left, otherwise (U, S.V^T)."""
         pass
 
@@ -24,12 +24,12 @@ class ButterflyInterface(ABC):
         pass
 
     @abstractmethod
-    def merge(self, As, axis=0):
+    def stack(self, As, axis=0):
         """Stack the As along the given axis.  The As here are given as a list."""
         pass
 
     @abstractmethod
-    def compose(self, L, A, compose_left):
+    def compose(self, L, A, axis):
         """[A] + L, L + [A], or [] if L is None."""
         pass
 
@@ -57,9 +57,9 @@ class ButterflyInterface(ABC):
         empty = self.compose(None, None, False)
         return self.apply(self.compose(empty, A, False), B)
 
-    def recursive_merge(self, us, axes):
-        """Freebie: merge recursively in multiple dimensions."""
+    def recursive_stack(self, us, axes):
+        """Freebie: stack recursively in multiple dimensions."""
         if len(axes) == 1:
-            return self.merge(us, axes[0])
+            return self.stack(us, axes[0])
         else:
-            return self.merge([self.recursive_merge(u, axes[1:]) for u in us], axes[0])
+            return self.stack([self.recursive_stack(u, axes[1:]) for u in us], axes[0])

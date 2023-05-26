@@ -15,7 +15,7 @@ def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, de
     """Carry out a one-dimensional butterfly factorization along factor_axis, splitting along aux_axis."""
 
     def merge_list_doubles(l):
-        return [bf.merge(l[2*i:2*i+2], axis=factor_axis) for i in range(len(l) // 2)]
+        return [bf.stack(l[2*i:2*i+2], axis=factor_axis) for i in range(len(l) // 2)]
 
     # Step 0: general setup
     factorization = bf.compose(None, None, None)
@@ -23,9 +23,9 @@ def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, de
 
     # Step 1: factorization at leaf nodes
     leaves = bf.split(A, factor_axis, 2 ** depth)
-    factored_leaves = list_transpose([bf.factor(leaf, singular_values_left) for leaf in leaves])
+    factored_leaves = list_transpose([bf.factor(leaf, factor_axis, aux_axis) for leaf in leaves])
     Us, Es = (factored_leaves[1], factored_leaves[0]) if singular_values_left else (factored_leaves[0], factored_leaves[1])
-    factorization = bf.compose(factorization, bf.diag(Us), singular_values_left) # Shortcut the U assembly
+    factorization = bf.compose(factorization, bf.diag(Us), factor_axis) # Shortcut the U assembly
     
     # Step 2: setup for iteration
     E_blocks = [Es] # E = diag(map(merge, E_blocks))
@@ -40,7 +40,7 @@ def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, de
             R_chunks = []
             E_col = []
             for E in col:
-                factored_E = bf.factor(E, singular_values_left)
+                factored_E = bf.factor(E, factor_axis, aux_axis)
                 R, new_E = (factored_E[1], factored_E[0]) if singular_values_left else (factored_E[0], factored_E[1])
                 R_chunks.append(R)
                 E_col.append(new_E)
@@ -62,14 +62,14 @@ def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, de
             Es, R_cols = Es_to_Es_and_Rs(E_block)
             new_E_blocks += Es
             new_U_blocks += Us_and_Rs_to_Us(U_block, R_cols)
-            R = bf.merge(list(map(bf.diag, R_cols)), axis=aux_axis)
+            R = bf.stack(list(map(bf.diag, R_cols)), axis=aux_axis)
             Rs.append(R)
         E_blocks = new_E_blocks
         U_blocks = new_U_blocks
-        factorization = bf.compose(factorization, bf.diag(Rs), singular_values_left)
-    final_E_blocks = list(map(lambda E: bf.merge(E, axis=factor_axis), E_blocks))
+        factorization = bf.compose(factorization, bf.diag(Rs), factor_axis)
+    final_E_blocks = list(map(lambda E: bf.stack(E, axis=factor_axis), E_blocks))
     final_E = bf.diag(final_E_blocks)
-    factorization_with_head = bf.compose(factorization, final_E, singular_values_left)
+    factorization_with_head = bf.compose(factorization, final_E, factor_axis)
 
     # Step 5: party!
     return factorization_with_head, factorization, U_blocks
@@ -98,9 +98,6 @@ def two_dimensional_butterfly(bf, A, min_leaf_size, axes):
             row.append(bf.multiply(bf.multiply(U, central_split[i][j]), V))
         central.append(row)
 
-    central_merged = bf.diag(central, dimens=2)
-    diag_split = [bf.split(col, axes[1], x)\
-                     for col in bf.split(central_merged, axes[0], y)]
-    
+    central_stacked = bf.diag(central, dimens=2)
 
-    return bf.join(bf.compose(left_factorization, central_merged, False), right_factorization)
+    return bf.join(bf.compose(left_factorization, central_stacked, False), right_factorization)
