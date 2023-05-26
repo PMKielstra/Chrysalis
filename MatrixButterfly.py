@@ -2,8 +2,6 @@ import numpy as np
 import scipy as sp
 from copy import deepcopy
 
-import matplotlib.pyplot as plt
-
 from ButterflyInterface import ButterflyInterface
 
 class MatrixButterfly(ButterflyInterface):
@@ -25,7 +23,7 @@ class MatrixButterfly(ButterflyInterface):
 
     def merge(self, As, axis=0):
         return np.concatenate(As, axis=axis)
-    showing = False
+
     def recursive_pad(self, us, dimen, dimens):
         if dimens == 1:
             below = sum([u.shape[dimen] for u in us])
@@ -37,12 +35,8 @@ class MatrixButterfly(ButterflyInterface):
                 padding_sequence[dimen] = (above, below)
                 above += u.shape[dimen]
                 new_us.append(np.pad(u, padding_sequence))
-                if self.showing:
-                    plt.spy(new_us[-1])
-                    plt.show()
             return new_us
         else:
-            #self.showing = True
             return [self.recursive_pad(u, dimen, dimens - 1) for u in us]
 
     def diag(self, us, dimens=1):
@@ -52,7 +46,7 @@ class MatrixButterfly(ButterflyInterface):
         for dimen in range(dimens):
             us = self.recursive_pad(us, dimens - 1 - dimen, dimens)
             us = self.transpose(us, 0, dimens - 1)
-        axes_list = [1] if dimens==1 else [1, 0]
+        axes_list = [1] if dimens==1 else [1, 0] # For matrices only -- I'll build a general tensor version too
         return self.recursive_merge(us, axes_list)
     
     def compose(self, L, A, compose_left):

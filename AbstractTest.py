@@ -24,6 +24,3 @@ for L, ax in zip(butterfly, axs):
 fig.suptitle(f"Butterfly factorization (relative error {rel_err})")
 fig.show()
 
-import scipy as sp
-print(sp.linalg.svdvals(A))
-# print(sp.linalg.svdvals(MB.apply(butterfly, np.eye(N))))
