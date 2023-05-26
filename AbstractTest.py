@@ -18,7 +18,6 @@ MB = MatrixButterfly(relative_singular_tolerance)
 butterfly = two_dimensional_butterfly(MB, A, 4, (0, 1))
 
 rel_err = np.linalg.norm(A - MB.apply(butterfly, np.eye(N))) / np.linalg.norm(A)
-#rel_err = 0
 fig, axs = plt.subplots(1, len(butterfly))
 for L, ax in zip(butterfly, axs):
     ax.spy(L)
