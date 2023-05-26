@@ -48,14 +48,12 @@ class MatrixButterfly(ButterflyInterface):
     def diag(self, us, dimens=1):
         if dimens == 1:
             return sp.linalg.block_diag(*us)
+        us = self.transpose(us, 0, dimens - 1)
         for dimen in range(dimens):
             us = self.recursive_pad(us, dimens - 1 - dimen, dimens)
             us = self.transpose(us, 0, dimens - 1)
-        us = self.transpose(us, 0, dimens - 1)
-        axes_list = [1] if dimens==1 else [0, 1]
-        result = self.recursive_merge(us, axes_list)
-
-        return result
+        axes_list = [1] if dimens==1 else [1, 0]
+        return self.recursive_merge(us, axes_list)
     
     def compose(self, L, A, compose_left):
         if L == None:

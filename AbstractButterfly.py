@@ -3,6 +3,8 @@ from copy import deepcopy
 import numpy as np
 import scipy as sp
 
+from matplotlib import pyplot as plt
+
 def tree_depth(bf, A, min_leaf_size, axes):
     return floor(log2(floor(min([bf.shape(A, axis) / min_leaf_size for axis in axes]))))
 
@@ -87,12 +89,18 @@ def two_dimensional_butterfly(bf, A, min_leaf_size, axes):
     assert (x, y) == (len(right_V_blocks), len(right_V_blocks[0]))
     central_split = [bf.split(col, axes[1], x)\
                      for col in bf.split(A, axes[0], y)]
-    central = [[0]*y]*x
+    central = []
     for i in range(x):
+        row = []
         for j in range(y):
-            central[i][j] = \
-                          bf.multiply(bf.multiply(bf.transpose(left_U_blocks[i][j], axes[0], axes[1]),\
-                                                  central_split[j][i]),\
-                                      bf.transpose(right_V_blocks[i][j], axes[0], axes[1]))
+            U = (bf.transpose(left_U_blocks[i][j], axes[0], axes[1]))
+            V = (bf.transpose(right_V_blocks[i][j], axes[0], axes[1]))
+            row.append(bf.multiply(bf.multiply(U, central_split[i][j]), V))
+        central.append(row)
+
     central_merged = bf.diag(central, dimens=2)
+    diag_split = [bf.split(col, axes[1], x)\
+                     for col in bf.split(central_merged, axes[0], y)]
+    
+
     return bf.join(bf.compose(left_factorization, central_merged, False), right_factorization)

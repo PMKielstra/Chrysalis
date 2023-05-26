@@ -13,7 +13,7 @@ def interaction_matrix(N):
 
 N = 256
 A = interaction_matrix(N)
-relative_singular_tolerance = 1e-10
+relative_singular_tolerance = 1e-6
 MB = MatrixButterfly(relative_singular_tolerance)
 butterfly = two_dimensional_butterfly(MB, A, 4, (0, 1))
 
@@ -23,3 +23,7 @@ for L, ax in zip(butterfly, axs):
     ax.spy(L)
 fig.suptitle(f"Butterfly factorization (relative error {rel_err})")
 fig.show()
+
+import scipy as sp
+print(sp.linalg.svdvals(A))
+# print(sp.linalg.svdvals(MB.apply(butterfly, np.eye(N))))
