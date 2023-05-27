@@ -39,8 +39,8 @@ class ButterflyInterface(ABC):
         pass
 
     @abstractmethod
-    def join(self, L1, L2):
-        """Blindly join factorizations"""
+    def join(self, L1, L2, axis):
+        """Blindly join factorizations at their ends along a specific axis."""
         pass
 
     @abstractmethod

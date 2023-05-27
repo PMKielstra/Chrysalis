@@ -3,6 +3,7 @@ import scipy as sp
 import scipy.linalg.interpolative as interp
 from copy import deepcopy
 
+from ListTranspose import list_transpose
 from ButterflyInterface import ButterflyInterface
 
 class MatrixButterfly(ButterflyInterface):
@@ -78,10 +79,10 @@ class MatrixButterfly(ButterflyInterface):
     def diag(self, us, dimens=1):
         if dimens == 1:
             return sp.linalg.block_diag(*us)
-        us = self.transpose(us, 0, dimens - 1)
+        us = list_transpose(us, 0, dimens - 1)
         for dimen in range(dimens):
             us = self.recursive_pad(us, dimens - 1 - dimen, dimens)
-            us = self.transpose(us, 0, dimens - 1)
+            us = list_transpose(us, 0, dimens - 1)
         axes_list = [1] if dimens==1 else [1, 0] # For matrices only -- I'll build a general tensor version too
         return self.recursive_stack(us, axes_list)
     
@@ -91,7 +92,7 @@ class MatrixButterfly(ButterflyInterface):
         else:
             return ([A] + L) if axis == 1 else (L + [A])
 
-    def join(self, L1, L2):
+    def join(self, L1, L2, axis):
         return L1 + L2
 
     def transpose(self, A, ax0, ax1):

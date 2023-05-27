@@ -1,15 +1,9 @@
 from math import floor, ceil, log2
-from copy import deepcopy
-import numpy as np
-import scipy as sp
 
-from matplotlib import pyplot as plt
+from ListTranspose import list_transpose
 
 def tree_depth(bf, A, min_leaf_size, axes):
     return floor(log2(floor(min([bf.shape(A, axis) / min_leaf_size for axis in axes]))))
-
-def list_transpose(l):
-    return list(map(list, zip(*l)))
 
 def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, depth):
     """Carry out a one-dimensional butterfly factorization along factor_axis, splitting along aux_axis."""
@@ -23,7 +17,7 @@ def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, de
 
     # Step 1: factorization at leaf nodes
     leaves = bf.split(A, factor_axis, 2 ** depth)
-    factored_leaves = list_transpose([bf.factor(leaf, factor_axis, aux_axis) for leaf in leaves])
+    factored_leaves = list_transpose([bf.factor(leaf, factor_axis, aux_axis) for leaf in leaves], 0, 1)
     Us, Es = (factored_leaves[1], factored_leaves[0]) if singular_values_left else (factored_leaves[0], factored_leaves[1])
     factorization = bf.compose(factorization, bf.diag(Us), factor_axis) # Shortcut the U assembly
     
@@ -33,7 +27,7 @@ def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, de
 
     # Step 3: process a single E block
     def Es_to_Es_and_Rs(Es):
-        split_Es = list_transpose([bf.split(E, aux_axis, 2) for E in merge_list_doubles(Es)])
+        split_Es = list_transpose([bf.split(E, aux_axis, 2) for E in merge_list_doubles(Es)], 0, 1)
         E_blocks = []
         R_cols = []
         for col in split_Es: # There should be two of these
@@ -80,27 +74,87 @@ def one_dimensional_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis):
     return full_factorization
 
 def two_dimensional_butterfly(bf, A, min_leaf_size, axes):
+
+    # Step 0: general setup
     assert len(axes) == 2
     depth = tree_depth(bf, A, min_leaf_size, axes)
+
+    # Step 1: factor along individual axes
     _, left_factorization, left_U_blocks = single_axis_butterfly(bf, A, min_leaf_size, axes[0], axes[1], floor(depth / 2), depth)
     _, right_factorization, right_V_blocks = single_axis_butterfly(bf, A, min_leaf_size, axes[1], axes[0], ceil(depth / 2), depth)
-    right_V_blocks = list_transpose(right_V_blocks)
+    right_V_blocks = list_transpose(right_V_blocks, 0, 1)
+
+    # Step 2: determine shape of resulting matrix, and split A up into the relevant block arrangement
     x, y = len(left_U_blocks), len(left_U_blocks[0])
     assert (x, y) == (len(right_V_blocks), len(right_V_blocks[0]))
     central_split = [bf.split(col, axes[0], y)\
                      for col in bf.split(A, axes[1], x)]
+
+    # Step 4: combine individual blocks on the left and the right to build the center matrix
     central = []
     for i in range(x):
         row = []
         for j in range(y):
-            U = (bf.transpose(left_U_blocks[i][j], axes[0], axes[1]))
-            V = (bf.transpose(right_V_blocks[i][j], axes[0], axes[1]))
-            UK = bf.build_center(central_split[i][j], U, \
-                                 axes[0])
+            U = bf.transpose(left_U_blocks[i][j], axes[0], axes[1])
+            V = bf.transpose(right_V_blocks[i][j], axes[0], axes[1])
+            UK = bf.build_center(central_split[i][j], U, axes[0])
             UKV = bf.build_center(UK, V, axes[1])
             row.append(UKV)
         central.append(row)
 
+    # Step 5: diagonalize individual blocks and return the eventual factorization.
     central_stacked = bf.diag(central, dimens=2)
 
-    return bf.join(bf.compose(left_factorization, central_stacked, False), right_factorization)
+    return bf.join(bf.compose(left_factorization, central_stacked, axes[0]), right_factorization, axes[0])
+
+def multidimensional_butterfly(bf, A, min_leaf_size, axis_pairs, steps_per_axis):
+    dimens = len(factor_axes)
+    assert dimens == len(axis_pairs)
+
+    def auto_steps_depth(factor_axis, aux_axis, given_steps):
+        depth = tree_depth(bf, A, min_leaf_size, [factor_axis, aux_axis])
+        if (aux_axis, factor_axis) in axis_pairs:
+            if factor_axis < aux_axis:
+                steps = floor(depth / 2)
+            else:
+                steps = ceil(depth / 2)
+        else:
+            steps = depth          
+        return steps if given_steps < 1 else min(steps, given_steps), depth
+    
+    steps_depths = [auto_steps_depth(*axes, given_steps) for axes, given_steps in zip(axis_pairs, steps_per_axis)] 
+
+    def factorization_and_blocks(i):
+        _, factorization, blocks - single_axis_butterfly(bf, A, min_leaf_size, axis_pairs[i][0], axis_pairs[i][1], steps_depths[i][0], steps_depths[i][1])
+        blocks = list_transpose(blocks, i, 0) # Does nothing in the case i == 0; otherwise, arranges all the block lists into the same shape. 
+        return factorization, blocks
+
+    factorizations_and_blocks = [factorization_and_blocks(i) for i in range(dimens)]
+
+    shape_temp = factorizations_and_blocks[0][1]
+    shape = []
+    for _ in range(dimens):
+        shape.append(len(shape_temp))
+        shape_temp = shape_temp[0]
+
+    def recursive_split_and_build(i, K, blocks):
+        if i == dimens:
+            for i in range(dimens):
+                K = bf.build_center(K, blocks[i], axis_pairs[i][0])
+            return k
+        else:
+            split_K = bf.split(K, axis_pairs[dimens - 1 - i][0], shape[i])
+            return [recursive_split_and_build(i + 1, KK, chunk) for KK, chunk in zip(K, blocks)]
+
+    central_split = recursive_split_and_build(0, A, shape)
+
+    central_stacked = bf.diag(central_split, dimens=dimens)
+
+    final = bf.compose(factorizations_and_blocks[0][0], central_stacked, axis_pairs[0][0])
+    for i in range(1, dimens):
+        final = bf.join(final, factorizations_and_blocks[i][0], axis_pairs[i][0])
+
+    return final
+
+    
+    
