@@ -96,7 +96,7 @@ class MatrixButterfly(ButterflyInterface):
         return L1 + L2
 
     def transpose(self, A, ax0, ax1):
-        return np.swapaxes(A, ax0, ax1)
+        return np.conjugate(np.swapaxes(A, ax0, ax1))
 
     def contract(self, As):
         As = deepcopy(As) # Avoid accidentally altering the As list

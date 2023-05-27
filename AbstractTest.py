@@ -16,7 +16,7 @@ def interaction_matrix(N):
 N = 512
 A = interaction_matrix(N)
 relative_singular_tolerance = 1e-6
-MB = MatrixButterfly(relative_singular_tolerance, decomposition='svd')
+MB = MatrixButterfly(relative_singular_tolerance, decomposition='id')
 butterfly = multidimensional_butterfly(MB, A, 4, [(0, 1), (1, 0)])
 
 rel_err = np.linalg.norm(A - MB.apply(butterfly, np.eye(N))) / np.linalg.norm(A)
