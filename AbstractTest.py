@@ -1,4 +1,4 @@
-from AbstractButterfly import one_dimensional_butterfly, two_dimensional_butterfly
+from AbstractButterfly import one_dimensional_butterfly, two_dimensional_butterfly, multidimensional_butterfly
 from MatrixButterfly import MatrixButterfly
 import numpy as np
 from matplotlib import pyplot as plt
@@ -17,7 +17,7 @@ N = 512
 A = interaction_matrix(N)
 relative_singular_tolerance = 1e-6
 MB = MatrixButterfly(relative_singular_tolerance, decomposition='svd')
-butterfly = two_dimensional_butterfly(MB, A, 3, (0, 1))
+butterfly = multidimensional_butterfly(MB, A, 4, [(0, 1), (1, 0)])
 
 rel_err = np.linalg.norm(A - MB.apply(butterfly, np.eye(N))) / np.linalg.norm(A)
 fig, axs = plt.subplots(1, len(butterfly))

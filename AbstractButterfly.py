@@ -1,6 +1,6 @@
 from math import floor, ceil, log2
 
-from ListTranspose import list_transpose
+from ListTranspose import list_transpose, push_front_to_back
 
 def tree_depth(bf, A, min_leaf_size, axes):
     return floor(log2(floor(min([bf.shape(A, axis) / min_leaf_size for axis in axes]))))
@@ -107,9 +107,13 @@ def two_dimensional_butterfly(bf, A, min_leaf_size, axes):
 
     return bf.join(bf.compose(left_factorization, central_stacked, axes[0]), right_factorization, axes[0])
 
-def multidimensional_butterfly(bf, A, min_leaf_size, axis_pairs, steps_per_axis):
-    dimens = len(factor_axes)
-    assert dimens == len(axis_pairs)
+def multidimensional_butterfly(bf, A, min_leaf_size, axis_pairs, steps_per_axis=None):
+    dimens = len(axis_pairs)
+    
+    if steps_per_axis == None:
+        steps_per_axis = [0] * dimens
+    else:
+        assert dimens == len(axis_pairs)
 
     def auto_steps_depth(factor_axis, aux_axis, given_steps):
         depth = tree_depth(bf, A, min_leaf_size, [factor_axis, aux_axis])
@@ -125,8 +129,8 @@ def multidimensional_butterfly(bf, A, min_leaf_size, axis_pairs, steps_per_axis)
     steps_depths = [auto_steps_depth(*axes, given_steps) for axes, given_steps in zip(axis_pairs, steps_per_axis)] 
 
     def factorization_and_blocks(i):
-        _, factorization, blocks - single_axis_butterfly(bf, A, min_leaf_size, axis_pairs[i][0], axis_pairs[i][1], steps_depths[i][0], steps_depths[i][1])
-        blocks = list_transpose(blocks, i, 0) # Does nothing in the case i == 0; otherwise, arranges all the block lists into the same shape. 
+        _, factorization, blocks = single_axis_butterfly(bf, A, min_leaf_size, axis_pairs[i][0], axis_pairs[i][1], steps_depths[i][0], steps_depths[i][1])
+        blocks = list_transpose(blocks, 0, i) # Does nothing in the case i == 0; otherwise, arranges all the block lists into the same shape. 
         return factorization, blocks
 
     factorizations_and_blocks = [factorization_and_blocks(i) for i in range(dimens)]
@@ -140,15 +144,18 @@ def multidimensional_butterfly(bf, A, min_leaf_size, axis_pairs, steps_per_axis)
     def recursive_split_and_build(i, K, blocks):
         if i == dimens:
             for i in range(dimens):
-                K = bf.build_center(K, blocks[i], axis_pairs[i][0])
-            return k
+                K = bf.build_center(K, bf.transpose(blocks[i], *axis_pairs[i]), axis_pairs[i][0])
+            return K
         else:
             split_K = bf.split(K, axis_pairs[dimens - 1 - i][0], shape[i])
-            return [recursive_split_and_build(i + 1, KK, chunk) for KK, chunk in zip(K, blocks)]
+            return [recursive_split_and_build(i + 1, KK, chunk) for KK, chunk in zip(split_K, blocks)]
 
-    central_split = recursive_split_and_build(0, A, shape)
+    blocks = [fb[1] for fb in factorizations_and_blocks]
+    blocks = push_front_to_back(blocks, dimens)
 
-    central_stacked = bf.diag(central_split, dimens=dimens)
+    central_split = recursive_split_and_build(0, A, blocks)
+
+    central_stacked = bf.diag(central_split, dimens)
 
     final = bf.compose(factorizations_and_blocks[0][0], central_stacked, axis_pairs[0][0])
     for i in range(1, dimens):
