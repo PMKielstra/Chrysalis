@@ -17,6 +17,12 @@ class MatrixButterfly(ButterflyInterface):
     def shape(self, A, axis):
         return A.shape[axis]
 
+    def multiply(self, A, B, axis=0):
+        if axis == 0:
+            return A.dot(B)
+        else:
+            return B.dot(A)
+
     def split(self, A, axis, n):
         return np.array_split(A, n, axis=axis)
 
@@ -85,22 +91,6 @@ class MatrixButterfly(ButterflyInterface):
             us = list_transpose(us, 0, dimens - 1)
         axes_list = [1] if dimens==1 else [1, 0] # For matrices only -- I'll build a general tensor version too
         return self.recursive_stack(us, axes_list)
-    
-    def compose(self, L, A, axis):
-        if L == None:
-            return []
-        else:
-            return ([A] + L) if axis == 1 else (L + [A])
-
-    def join(self, L1, L2, axis):
-        return L1 + L2
 
     def transpose(self, A, ax0, ax1):
         return np.conjugate(np.swapaxes(A, ax0, ax1))
-
-    def contract(self, As):
-        As = deepcopy(As) # Avoid accidentally altering the As list
-        X = As.pop()
-        while len(As) > 0:
-            X = As.pop().dot(X)
-        return X

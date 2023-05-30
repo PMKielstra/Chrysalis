@@ -159,7 +159,7 @@ def multidimensional_butterfly(bf, A, min_leaf_size, axis_pairs, steps_per_axis=
 
     final = bf.compose(factorizations_and_blocks[0][0], central_stacked, axis_pairs[0][0])
     for i in range(1, dimens):
-        final = bf.join(final, factorizations_and_blocks[i][0], axis_pairs[i][0])
+        final = bf.join(final, factorizations_and_blocks[i][0])
 
     return final
 
