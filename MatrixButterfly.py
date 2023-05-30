@@ -30,7 +30,7 @@ class MatrixButterfly(ButterflyInterface):
         singular_values_left = (factor_axis > aux_axis)
         if self.decomposition == 'svd':
             U, S, Vh = sp.linalg.svd(A, full_matrices=False, compute_uv=True)
-            k = (np.abs(S) > self.truncation_tolerance * np.abs(S[0])).nonzero()[0][-1]
+            k = (np.abs(S) > self.truncation_tolerance * np.abs(S[0])).nonzero()[0][-1] + 1
             return (U[:, :k].dot(np.diag(S[:k])), Vh[:k, :]) if singular_values_left else (U[:, :k], np.diag(S[:k]).dot(Vh[:k, :]))
         elif self.decomposition == 'id':
             if singular_values_left:
