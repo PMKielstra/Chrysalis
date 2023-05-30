@@ -56,11 +56,13 @@ class MatrixButterfly(ButterflyInterface):
         elif self.decomposition == 'id':
             if axis == 0: # This is easier than writing the code for a general axis
                 U = U.T
+            else:
+                K = K.T
             rows = []
             for r in range(U.shape[1]):
                 rows.append(K[self.find_identity_row(U, r)])
             final = np.array(rows)
-            return final.T if axis == 0 else final
+            return final.T if axis == 1 else final
         return None
 
     def stack(self, As, axis=0):
