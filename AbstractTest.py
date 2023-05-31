@@ -1,4 +1,4 @@
-from AbstractButterfly import one_dimensional_butterfly, two_dimensional_butterfly, multidimensional_butterfly
+from AbstractButterfly import single_axis_butterfly, multi_axis_butterfly
 from MatrixButterfly import MatrixButterfly
 import numpy as np
 from matplotlib import pyplot as plt
@@ -13,18 +13,16 @@ def interaction_matrix(N):
     dest = np.array([[1, x] for x in np.linspace(0, 1, N)])
     return np.fromfunction(np.vectorize(lambda i, j: K(source[i], dest[j])), (N, N), dtype=int)
 
-N = 512
+N = 256
 A = interaction_matrix(N)
 relative_singular_tolerance = 1e-10
-MB = MatrixButterfly(relative_singular_tolerance, decomposition='id')
-butterfly = multidimensional_butterfly(MB, A, 4, [(0, 1), (1, 0)])
+MB = MatrixButterfly(relative_singular_tolerance, decomposition='svd')
+butterfly = multi_axis_butterfly(MB, A, 16, [(0, 1), (1, 0)])
 
 rel_err = np.linalg.norm(A - MB.contract(butterfly)) / np.linalg.norm(A)
-for i in range(2):
-    print("---")
+for i in butterfly:
     fig, axs = plt.subplots(1, len(butterfly[i]))
     for L, ax in zip(butterfly[i], axs):
-        print(L.shape)
         ax.spy(L)
     fig.suptitle(f"Butterfly factorization (relative error {rel_err})")
     fig.show()
