@@ -65,6 +65,8 @@ def single_axis_butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, de
     final_E = bf.diag(final_E_blocks)
     factorization_with_head = bf.compose(factorization, final_E, factor_axis)
 
+#     print(len(U_blocks), len(U_blocks[0]))
+
     # Step 5: party!
     return factorization_with_head, factorization, U_blocks
 
@@ -123,37 +125,31 @@ def multidimensional_butterfly(bf, A, min_leaf_size, axis_pairs, steps_per_axis=
             else:
                 steps = ceil(depth / 2)
         else:
-            steps = depth          
+            steps = depth       
         return steps if given_steps < 1 else min(steps, given_steps), depth
     
     steps_depths = [auto_steps_depth(*axes, given_steps) for axes, given_steps in zip(axis_pairs, steps_per_axis)] 
 
     def factorization_and_blocks(i):
         _, factorization, blocks = single_axis_butterfly(bf, A, min_leaf_size, axis_pairs[i][0], axis_pairs[i][1], steps_depths[i][0], steps_depths[i][1])
-        blocks = list_transpose(blocks, 0, i) # Does nothing in the case i == 0; otherwise, arranges all the block lists into the same shape. 
         return factorization, blocks
 
     factorizations_and_blocks = [factorization_and_blocks(i) for i in range(dimens)]
 
-    shape_temp = factorizations_and_blocks[0][1]
-    shape = []
-    for _ in range(dimens):
-        shape.append(len(shape_temp))
-        shape_temp = shape_temp[0]
-
-    def recursive_split_and_build(i, K, blocks):
-        if i == dimens:
-            for i in range(dimens):
-                K = bf.build_center(K, bf.transpose(blocks[i], *axis_pairs[i]), axis_pairs[i][0])
-            return K
-        else:
-            split_K = bf.split(K, axis_pairs[dimens - 1 - i][0], shape[i])
-            return [recursive_split_and_build(i + 1, KK, chunk) for KK, chunk in zip(split_K, blocks)]
-
     blocks = [fb[1] for fb in factorizations_and_blocks]
-    blocks = push_front_to_back(blocks, dimens)
 
-    central_split = recursive_split_and_build(0, A, blocks)
+    def recursive_split_and_build(i, positions, A):
+        if i == dimens:
+            K = A
+            for d in range(dimens):
+                U = blocks[d][positions.get(axis_pairs[d][0], None)][positions.get(axis_pairs[d][1], 0)]
+                K = bf.build_center(K, bf.transpose(U, *axis_pairs[d]), axis_pairs[d][0])
+            return K
+        return [
+                recursive_split_and_build(i + 1, {**positions, axis_pairs[i][0]: j}, AA) for j, AA in enumerate(bf.split(A, axis_pairs[i][1], len(blocks[i])))
+            ]
+
+    central_split = recursive_split_and_build(0, {}, A)
 
     central_stacked = bf.diag(central_split, dimens)
 
