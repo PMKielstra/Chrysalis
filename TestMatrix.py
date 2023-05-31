@@ -3,8 +3,6 @@ from MatrixButterfly import MatrixButterfly
 import numpy as np
 from matplotlib import pyplot as plt
 
-from NoneButterfly import NoneButterfly
-
 def K(r1, r2):
     return np.exp(1j * np.pi * np.linalg.norm(r1 - r2)) / np.linalg.norm(r1 - r2)
 
@@ -16,7 +14,7 @@ def interaction_matrix(N):
 N = 256
 A = interaction_matrix(N)
 relative_singular_tolerance = 1e-10
-MB = MatrixButterfly(relative_singular_tolerance, decomposition='svd')
+MB = MatrixButterfly(relative_singular_tolerance, decomposition='id')
 butterfly = multi_axis_butterfly(MB, A, 16, [(0, 1), (1, 0)])
 
 rel_err = np.linalg.norm(A - MB.contract(butterfly)) / np.linalg.norm(A)
