@@ -13,14 +13,14 @@ def interaction_matrix(N):
 
 N = 256
 A = interaction_matrix(N)
-relative_singular_tolerance = 1e-10
-MB = MatrixButterfly(relative_singular_tolerance, decomposition='id')
-butterfly = multi_axis_butterfly(MB, A, 16, [(0, 1), (1, 0)])
+relative_singular_tolerance = 1e-6
+MB = MatrixButterfly(relative_singular_tolerance, decomposition='svd')
+butterfly = single_axis_butterfly(MB, A, 64, 1, 0)
 
 rel_err = np.linalg.norm(A - MB.contract(butterfly)) / np.linalg.norm(A)
 for i in butterfly:
     fig, axs = plt.subplots(1, len(butterfly[i]))
-    for L, ax in zip(butterfly[i], axs):
+    for L, ax in zip(reversed(butterfly[i]), axs):
         ax.spy(L)
     fig.suptitle(f"Butterfly factorization (relative error {rel_err})")
     fig.show()

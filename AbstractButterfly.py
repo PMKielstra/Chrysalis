@@ -46,7 +46,7 @@ def __butterfly(bf, A, min_leaf_size, factor_axis, aux_axis, steps, depth):
         diagonalized_Us = [bf.diag(Us[2*i:2*i+2]) for i in range(len(Us) // 2)]
         new_Us = []
         for R_col in Rs:
-            new_Us.append([bf.multiply(R, U) if singular_values_left else bf.multiply(U, R) for U, R in zip(diagonalized_Us, R_col)])
+            new_Us.append([bf.multiply(U, R, factor_axis) for U, R in zip(diagonalized_Us, R_col)])
         return new_Us
 
     # Step 4: Process all the blocks

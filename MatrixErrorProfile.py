@@ -1,4 +1,4 @@
-from AbstractButterfly import one_dimensional_butterfly, two_dimensional_butterfly, multidimensional_butterfly
+from AbstractButterfly import multi_axis_butterfly
 from MatrixButterfly import MatrixButterfly
 import numpy as np
 from matplotlib import pyplot as plt
@@ -18,14 +18,14 @@ def interaction_matrix(N):
 
 Ns = [32, 64, 128, 256, 512, 1024, 2048]
 relative_singular_tolerance = 1e-10
-decomposition = 'id'
+decomposition = 'svd'
 
 MB = MatrixButterfly(relative_singular_tolerance, decomposition)
 errors = []
 for i, N in enumerate(Ns):
     print(f"Now profiling N={N} ({i+1} of {len(Ns)})") 
     A = interaction_matrix(N)
-    butterfly = multidimensional_butterfly(MB, A, 4, [(0, 1), (1, 0)])
+    butterfly = multi_axis_butterfly(MB, A, 4, [(0, 1), (1, 0)])
     errors.append(np.linalg.norm(A - MB.contract(butterfly)) / np.linalg.norm(A))
 
 plt.plot(Ns, errors)
