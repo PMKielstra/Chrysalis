@@ -19,7 +19,6 @@ class AugmentedList:
     def __iter__(self):
         return self.aug_list.__iter__()
 
-
 class SliceTree(AugmentedList):
     def __init__(self, cols_list, parent=None):
         self.store_list(cols_list)

@@ -7,7 +7,7 @@ from tensorly import unfold
 from matplotlib import pyplot as plt
 from functools import reduce
 
-from slicetree import SliceTree, split_to_tree, Multirange, EXTEND, IGNORE
+from SliceManagement import SliceTree, split_to_tree, Multirange, EXTEND, IGNORE
 
 N = 32
 eps = 1e-6
