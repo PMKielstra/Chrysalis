@@ -42,6 +42,8 @@ IGNORE = 0
 class Multirange(AugmentedList):
     def __init__(self, ranges, split_pattern):
         assert(len(ranges) == len(split_pattern))
+        for r in ranges:
+            assert isinstance(r, SliceTree)
         self.store_list(ranges)
         self.split_pattern = split_pattern
 
@@ -65,5 +67,6 @@ class Multirange(AugmentedList):
             return [f(r) for r in self.list()]
         return [ff(r) for ff, r in zip(f, self.list())]
 
-    def overwrite(self, new_val, index):
-        return Multirange([(new_val if i == index else r) for i, r in enumerate(self.list())], self.split_pattern)
+    def overwrite(self, new_tree, index):
+        assert isinstance(new_tree, SliceTree)
+        return Multirange([(new_tree if i == index else r) for i, r in enumerate(self.list())], self.split_pattern)

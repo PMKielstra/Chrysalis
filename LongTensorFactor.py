@@ -50,7 +50,7 @@ def ss_row_id(multirange, factor_index):
     R = interp.reconstruct_interp_matrix(idx, proj)
 
     # Step 4: Map the rows chosen by the ID, which are a subset of [1, ..., len(multirange[factor_index])], back to a subset of the relevant actual rows
-    old_rows = np.array(multirange[factor_index])
+    old_rows = multirange[factor_index]
     new_rows = old_rows[idx[:k]]
     return new_rows, R.T
 
@@ -62,10 +62,11 @@ def compute_matrices(level, multirange, factor_index):
     next_steps = multirange.next_steps()
     next_results = [compute_matrices(level - 1, step, factor_index) for step in next_steps]
     new_rows = np.concatenate([row for row, U in next_results])
-    new_rows, new_U = ss_row_id(multirange.overwrite(new_rows, factor_index), factor_index)
+    new_rows, new_U = ss_row_id(multirange.overwrite(SliceTree(new_rows), factor_index), factor_index)
     return new_rows, [sp.linalg.block_diag(*UU) for UU in zip(*(U for row, U in next_results))] + [new_U]
 
 def factor_chunk(x_index, y_index, levels, splits_per_level, factor_index):
+    """Carry out a single-axis butterfly factorization in the specific case of a four-dimensional tensor of size NxNxNxN, factoring along one of the first two axes."""
     assert factor_index in [0, 1] # There's a much more general solution here, but no slightly-more-general solution, so it's not worth the hassle.
     x_split_tree = split_to_tree(list(range(N)), levels, splits_per_level)[x_index]
     y_split_tree = split_to_tree(list(range(N)), levels, splits_per_level)[y_index]
@@ -81,6 +82,7 @@ def factor_chunk(x_index, y_index, levels, splits_per_level, factor_index):
     return compute_matrices(levels, section_ranges, factor_index)
 
 def evaluate_chunk(x_index, y_index, levels, splits_per_level, factor_index):
+    """Compare a single-axis butterfly compression and expansion with the original tensor."""
     assert factor_index in [0, 1]
     rows, Us = factor_chunk(x_index, y_index, levels, splits_per_level, factor_index)
     full_U = reduce(np.matmul, Us)
