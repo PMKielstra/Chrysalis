@@ -6,6 +6,7 @@ from random import sample
 from tensorly import unfold
 from matplotlib import pyplot as plt
 from functools import reduce
+from math import floor
 
 from SliceManagement import SliceTree, split_to_tree, Multirange, EXTEND, IGNORE
 
@@ -58,41 +59,77 @@ def compute_matrices(level, multirange, factor_index):
     """Carry out a multi-level, single-axis butterfly, returning a subset of rows along that axis along with a list of interpolation matrices."""
     if level == 0:
         new_rows, R = ss_row_id(multirange, factor_index)
-        return new_rows, [R]
+        return [new_rows], [R]
     next_steps = multirange.next_steps()
     next_results = [compute_matrices(level - 1, step, factor_index) for step in next_steps]
-    new_rows = np.concatenate([row for row, U in next_results])
-    new_rows, new_U = ss_row_id(multirange.overwrite(SliceTree(new_rows), factor_index), factor_index)
-    return new_rows, [sp.linalg.block_diag(*UU) for UU in zip(*(U for row, U in next_results))] + [new_U]
+    next_rows = np.concatenate([row[-1] for row, U in next_results])
+    Us = [sp.linalg.block_diag(*UU) for UU in zip(*(U for row, U in next_results))]
+    rows = [np.concatenate(RR) for RR in zip(*(row for row, U in next_results))]
+    new_rows, new_U = ss_row_id(multirange.overwrite(SliceTree(next_rows), factor_index), factor_index)
+    return rows + [new_rows], Us + [new_U]
 
-def factor_chunk(x_index, y_index, levels, splits_per_level, factor_index):
-    """Carry out a single-axis butterfly factorization in the specific case of a four-dimensional tensor of size NxNxNxN, factoring along one of the first two axes."""
-    assert factor_index in [0, 1] # There's a much more general solution here, but no slightly-more-general solution, so it's not worth the hassle.
-    x_split_tree = split_to_tree(list(range(N)), levels, splits_per_level)[x_index]
-    y_split_tree = split_to_tree(list(range(N)), levels, splits_per_level)[y_index]
-    split_pattern = [IGNORE, IGNORE, EXTEND, EXTEND]
-    split_pattern[factor_index] = splits_per_level
-    section_ranges = Multirange([
-            SliceTree(list(range(N))),
-            SliceTree(list(range(N))),
-            x_split_tree,
-            y_split_tree
-        ],
-        split_pattern)
-    return compute_matrices(levels, section_ranges, factor_index)
+class FactorTree:
+    def __init__(self, rows, matrix, position):
+        self.rows = rows
+        self.matrix = matrix
+        self.position = position
+        self.children = []
 
-def evaluate_chunk(x_index, y_index, levels, splits_per_level, factor_index):
-    """Compare a single-axis butterfly compression and expansion with the original tensor."""
-    assert factor_index in [0, 1]
-    rows, Us = factor_chunk(x_index, y_index, levels, splits_per_level, factor_index)
-    full_U = reduce(np.matmul, Us)
-    x_split_tree = split_to_tree(list(range(N)), levels, splits_per_level)[x_index]
-    y_split_tree = split_to_tree(list(range(N)), levels, splits_per_level)[y_index]
-    points = [list(range(N)), list(range(N)), x_split_tree[:], y_split_tree[:]]
-    true_A = np.fromfunction(np.vectorize(make_K_from_list(points)), (len(p) for p in points), dtype=int)
-    points[factor_index] = rows
-    compressed_A = np.fromfunction(np.vectorize(make_K_from_list(points)), (len(p) for p in points), dtype=int)
-    decompressed_A = np.swapaxes(np.tensordot(full_U, compressed_A, axes=((1,), (factor_index,))), 0, factor_index)
-    return np.linalg.norm(true_A - decompressed_A) / np.linalg.norm(true_A)
+def factor_to_tree(rows_list, multirange, factor_index):
+    new_rows, Rs = [], []
+    for r in rows_list:
+        row, R = ss_row_id(multirange.overwrite(SliceTree(r), factor_index), factor_index)
+        new_rows.append(row)
+        Rs.append(R)
+    tree = FactorTree(np.concatenate(new_rows), sp.linalg.block_diag(*Rs), (multirange[2].position, multirange[3].position))
+    if len(rows_list) > 1:
+        merged_rows = [np.concatenate((a, b)) for a, b in zip(new_rows[::2], new_rows[1::2])]
+        next_steps = multirange.next_steps()
+        tree.children = [factor_to_tree(merged_rows, step, factor_index) for step in next_steps]
+    return tree
 
-print(evaluate_chunk(1, 2, 2, 2, 1))
+def factor_full(levels, splits_per_level, factor_index):
+    rows_list = np.array_split(list(range(N)), splits_per_level ** levels)
+    split_pattern = [IGNORE, IGNORE, splits_per_level, splits_per_level]
+    section_ranges = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N)))], split_pattern)
+    return factor_to_tree(rows_list, section_ranges, factor_index)
+
+def matrix_to_chunks(A, tree):
+    if tree.children == []:
+        return {tree.position: (tree.rows, np.matmul(tree.matrix.T, A))}
+    return {k: v for child in tree.children for k, v in matrix_to_chunks(np.matmul(tree.matrix.T, A), child).items()}
+
+def chunks_times_tensor(chunks, levels, splits_per_level, factor_index):
+    split = N // (splits_per_level ** levels)
+    new_chunks = {}
+    for x in range(splits_per_level ** levels):
+        for y in range(splits_per_level ** levels):
+            xrange = list(range(x * split, (x + 1) * split))
+            yrange = list(range(y * split, (y + 1) * split))
+            points = [list(range(N)), list(range(N)), xrange, yrange]
+            rows, matrix = chunks[(x, y)]
+            points[factor_index] = rows
+            K = make_K_from_list(points)
+            tensor = np.fromfunction(np.vectorize(K), (len(p) for p in points), dtype=int)
+            new_matrix = np.tensordot(matrix, tensor, axes=2)
+            new_chunks[(x, y)] = new_matrix
+    return new_chunks
+
+def reconstitute(chunks, levels, splits_per_level):
+    block = []
+    for x in range(splits_per_level ** levels):
+        block_row = []
+        for y in range(splits_per_level ** levels):
+            block_row.append(chunks[(x, y)])
+        block.append(block_row)
+    return np.block(block)
+
+
+tree = factor_full(3, 2, 0)
+A = np.random.rand(N, N)
+chunks = matrix_to_chunks(A, tree)
+tensored_chunks = chunks_times_tensor(chunks, 3, 2, 0)
+compressed_result = reconstitute(tensored_chunks, 3, 2)
+full_tensor = np.fromfunction(np.vectorize(K_point), (N, N, N, N), dtype=int)
+full_result = np.tensordot(A, full_tensor, axes=2)
+print(np.linalg.norm(full_result - compressed_result) / np.linalg.norm(full_result))

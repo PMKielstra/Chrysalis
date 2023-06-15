@@ -20,13 +20,14 @@ class AugmentedList:
         return self.aug_list.__iter__()
 
 class SliceTree(AugmentedList):
-    def __init__(self, cols_list, parent=None):
+    def __init__(self, cols_list, parent=None, position=0):
         self.store_list(cols_list)
         self.parent = parent
+        self.position = position
     
     def split(self, n):
         splits = np.array_split(self.list(), n)
-        return [SliceTree(new_list, self) for new_list in splits]
+        return [SliceTree(new_list, self, self.position * n + index) for index, new_list in enumerate(splits)]
 
     def extend(self):
         return self.parent
