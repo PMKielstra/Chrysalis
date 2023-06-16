@@ -5,30 +5,37 @@ from tqdm import tqdm
 from random import sample
 from tensorly import unfold
 from matplotlib import pyplot as plt
-from functools import reduce
+from functools import reduce, cache
 from math import floor, prod
 import itertools
 
 from SliceManagement import SliceTree, split_to_tree, Multirange, EXTEND, IGNORE
 
 N = 32
+levels = 2
 eps = 1e-6
 
 xs = np.linspace(0, 1, N)
-xgrid, ygrid = np.meshgrid(xs, xs)
+ygrid, xgrid = np.meshgrid(xs, xs)
 
 def K(r1, r2):
     """Tensor kernel representing the interaction between the two points r1 and r2."""
     d = np.linalg.norm(r1 - r2)
     return np.exp(1j * N * np.pi * d) / d
 
+@cache
 def K_point(i, j, k, l):
     """Tensor kernel at a point -- (i, j) are considered as points on the source grid, with z=0, and (k, l) as points on the observer grid, with z=1.  Mapping from [0, N] to [0, 1] is performed automatically.  Expects integer arguments."""
     return K(np.array((0, xgrid[i, j], ygrid[i, j])), np.array((1, xgrid[k, l], ygrid[k, l])))
 
 def make_K_from_list(points):
     """Create a version of K_point which can be used with arbitrary subsets of the usual grid rows and columns."""
-    return lambda *pos: K_point(*(p[q] for p, q in zip(points, pos)))
+    return lambda i, j, k, l: K_point(points[0][i], points[1][j], points[2][k], points[3][l])
+
+def K_from_coords(coords_list):
+    coord_grid = np.array(np.fromfunction(np.vectorize(lambda i, j, k, l: (0 - 1, (coords_list[0][i] - coords_list[2][k]) / (N-1), (coords_list[1][j] - coords_list[3][l]) / (N-1))), (len(r) for r in coords_list), dtype=int))
+    norm = np.linalg.norm(coord_grid, axis=0)
+    return np.exp(1j * N * np.pi * norm) / norm
 
 n_subsamples = 20
 def np_sample(range_x):
@@ -44,7 +51,7 @@ def ss_row_id(multirange, factor_index):
     sampled_ranges = multirange.apply(sample_apply)
 
     # Step 2: Set up a tensor from the points chosen by the subsampling
-    A = np.fromfunction(np.vectorize(make_K_from_list(sampled_ranges)), (len(r) for r in sampled_ranges), dtype=int)
+    A = K_from_coords(sampled_ranges)
 
     # Step 3: Unfold the tensor and carry out ID
     unfolded = unfold(A, factor_index).T # The transpose here is because we want row decompositions, not column, but Scipy only does column decompositions, not rows.
@@ -146,8 +153,7 @@ def chunks_times_tensor(chunks, profile):
             points[index] = list(range(x * split, (x + 1) * split))
         for index, rows in zip(profile.factor_indices, rows_list):
             points[index] = rows
-        K = make_K_from_list(points)
-        tensor = np.fromfunction(np.vectorize(K), (len(p) for p in points), dtype=int)
+        tensor = K_from_coords(points)
         new_matrix = np.tensordot(matrix, tensor, axes=2)
         new_chunks[position] = new_matrix
     return new_chunks
@@ -173,14 +179,15 @@ def size(tree, profile):
         tensor_size_with_matrix_size += tsms
     return tensor_size_only, tensor_size_with_matrix_size + matrix_size        
 
-profile = FactorProfile(factor_indices = [0, 1], position_indices = [2, 3], levels = 3)
+profile = FactorProfile(factor_indices = [0, 1], position_indices = [2, 3], levels = levels)
 
 tree = factor_full(profile)
 A = np.random.rand(N, N)
 chunks = matrix_to_chunks(A, tree)
 tensored_chunks = chunks_times_tensor(chunks, profile)
 compressed_result = reconstitute(tensored_chunks, profile)
-full_tensor = np.fromfunction(np.vectorize(K_point), (N, N, N, N), dtype=int)
+print("Now calculating full tensor...")
+full_tensor = K_from_coords(tuple(tuple(range(N)) for _ in range(4)))
 full_result = np.tensordot(A, full_tensor, axes=2)
 print(np.linalg.norm(full_result - compressed_result) / np.linalg.norm(full_result))
-print(np.array(size(tree, profile)) / (N ** 4))
+
