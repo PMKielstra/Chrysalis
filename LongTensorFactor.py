@@ -15,22 +15,10 @@ N = 32
 levels = 2
 eps = 1e-6
 
-xs = np.linspace(0, 1, N)
-ygrid, xgrid = np.meshgrid(xs, xs)
-
 def K(r1, r2):
-    """Tensor kernel representing the interaction between the two points r1 and r2."""
+    """Tensor kernel representing the interaction between the two points r1 and r2.  Currently unused, but kept around as a reference."""
     d = np.linalg.norm(r1 - r2)
     return np.exp(1j * N * np.pi * d) / d
-
-@cache
-def K_point(i, j, k, l):
-    """Tensor kernel at a point -- (i, j) are considered as points on the source grid, with z=0, and (k, l) as points on the observer grid, with z=1.  Mapping from [0, N] to [0, 1] is performed automatically.  Expects integer arguments."""
-    return K(np.array((0, xgrid[i, j], ygrid[i, j])), np.array((1, xgrid[k, l], ygrid[k, l])))
-
-def make_K_from_list(points):
-    """Create a version of K_point which can be used with arbitrary subsets of the usual grid rows and columns."""
-    return lambda i, j, k, l: K_point(points[0][i], points[1][j], points[2][k], points[3][l])
 
 def K_from_coords(coords_list):
     coord_grid = np.array(np.fromfunction(np.vectorize(lambda i, j, k, l: (0 - 1, (coords_list[0][i] - coords_list[2][k]) / (N-1), (coords_list[1][j] - coords_list[3][l]) / (N-1))), (len(r) for r in coords_list), dtype=int))
