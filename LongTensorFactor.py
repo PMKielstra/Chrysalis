@@ -6,7 +6,8 @@ from random import sample
 from tensorly import unfold
 from matplotlib import pyplot as plt
 from functools import reduce
-from math import floor
+from math import floor, prod
+import itertools
 
 from SliceManagement import SliceTree, split_to_tree, Multirange, EXTEND, IGNORE
 
@@ -68,6 +69,26 @@ def compute_matrices(level, multirange, factor_index):
     new_rows, new_U = ss_row_id(multirange.overwrite(SliceTree(next_rows), factor_index), factor_index)
     return rows + [new_rows], Us + [new_U]
 
+class FactorProfile:
+    dimensions: int
+    factor_indices: list
+    position_indices: list
+    position_len: int
+    levels: int
+    splits_per_level: int
+
+    def __init__(self, dimensions=4, factor_indices=None, position_indices=None, levels=2, splits_per_level=2):
+        self.dimensions, self.levels, self.splits_per_level = dimensions, levels, splits_per_level
+        if factor_indices is None:
+            factor_indices = list(range(dimensions // 2))
+        if position_indices is None:
+            position_indices = list(range(factor_indices[-1], dimensions))
+        self.position_len = len(position_indices)
+        assert len(factor_indices) + self.position_len <= dimensions
+        self.factor_indices, self.position_indices = factor_indices, position_indices
+        self.split_pattern = [splits_per_level if i in position_indices else IGNORE for i in range(dimensions)]
+        self.deepest_split = splits_per_level ** levels
+
 class FactorTree:
     def __init__(self, rows, matrix, position):
         self.rows = rows
@@ -75,61 +96,91 @@ class FactorTree:
         self.position = position
         self.children = []
 
-def factor_to_tree(rows_list, multirange, factor_index):
+def factor_to_tree(rows_list, multirange, factor_index, profile):
     new_rows, Rs = [], []
     for r in rows_list:
         row, R = ss_row_id(multirange.overwrite(SliceTree(r), factor_index), factor_index)
         new_rows.append(row)
         Rs.append(R)
-    tree = FactorTree(np.concatenate(new_rows), sp.linalg.block_diag(*Rs), (multirange[2].position, multirange[3].position))
+    tree = FactorTree(np.concatenate(new_rows), sp.linalg.block_diag(*Rs), tuple(multirange[i].position for i in profile.position_indices))
     if len(rows_list) > 1:
         merged_rows = [np.concatenate((a, b)) for a, b in zip(new_rows[::2], new_rows[1::2])]
         next_steps = multirange.next_steps()
-        tree.children = [factor_to_tree(merged_rows, step, factor_index) for step in next_steps]
+        tree.children = [factor_to_tree(merged_rows, step, factor_index, profile) for step in next_steps]
     return tree
 
-def factor_full(levels, splits_per_level, factor_index):
-    rows_list = np.array_split(list(range(N)), splits_per_level ** levels)
-    split_pattern = [IGNORE, IGNORE, splits_per_level, splits_per_level]
-    section_ranges = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N)))], split_pattern)
-    return factor_to_tree(rows_list, section_ranges, factor_index)
+class MultiFactorTree:
+    def __init__(self, triples, position):
+        self.position = position
+        self.triples = triples
+        self.children = []
+
+def merge_trees(trees, factor_indices):
+    new_tree = MultiFactorTree([(index, tree.rows, tree.matrix) for index, tree in zip(factor_indices, trees)], trees[0].position)
+    new_tree.children = [
+        merge_trees(t, factor_indices) for t in zip(*(tree.children for tree in trees))
+    ]
+    return new_tree
+
+def factor_full(profile):
+    rows_list = np.array_split(list(range(N)), profile.deepest_split)
+    section_ranges = Multirange([SliceTree(list(range(N))) for _ in range(profile.dimensions)], profile.split_pattern)
+    trees = [factor_to_tree(rows_list, section_ranges, factor_index, profile) for factor_index in profile.factor_indices]
+    return merge_trees(trees, profile.factor_indices)
 
 def matrix_to_chunks(A, tree):
+    processed_matrix = A
+    for index, _rows, matrix in tree.triples:
+        processed_matrix = np.swapaxes(np.tensordot(matrix, processed_matrix, (0, index)), 0, index)
     if tree.children == []:
-        return {tree.position: (tree.rows, np.matmul(tree.matrix.T, A))}
-    return {k: v for child in tree.children for k, v in matrix_to_chunks(np.matmul(tree.matrix.T, A), child).items()}
+        return {tree.position: ([row for _index, row, _matrix in tree.triples], processed_matrix)}
+    return {k: v for child in tree.children for k, v in matrix_to_chunks(processed_matrix, child).items()}
 
-def chunks_times_tensor(chunks, levels, splits_per_level, factor_index):
-    split = N // (splits_per_level ** levels)
+def chunks_times_tensor(chunks, profile):
+    split = N // profile.deepest_split
     new_chunks = {}
-    for x in range(splits_per_level ** levels):
-        for y in range(splits_per_level ** levels):
-            xrange = list(range(x * split, (x + 1) * split))
-            yrange = list(range(y * split, (y + 1) * split))
-            points = [list(range(N)), list(range(N)), xrange, yrange]
-            rows, matrix = chunks[(x, y)]
-            points[factor_index] = rows
-            K = make_K_from_list(points)
-            tensor = np.fromfunction(np.vectorize(K), (len(p) for p in points), dtype=int)
-            new_matrix = np.tensordot(matrix, tensor, axes=2)
-            new_chunks[(x, y)] = new_matrix
+    for position in itertools.product(range(profile.deepest_split), repeat=profile.position_len):
+        rows_list, matrix = chunks[position]
+        points = [[list(range(N))] for _ in  range(profile.dimensions)]
+        for index, x in zip(profile.position_indices, position):
+            points[index] = list(range(x * split, (x + 1) * split))
+        for index, rows in zip(profile.factor_indices, rows_list):
+            points[index] = rows
+        K = make_K_from_list(points)
+        tensor = np.fromfunction(np.vectorize(K), (len(p) for p in points), dtype=int)
+        new_matrix = np.tensordot(matrix, tensor, axes=2)
+        new_chunks[position] = new_matrix
     return new_chunks
 
-def reconstitute(chunks, levels, splits_per_level):
-    block = []
-    for x in range(splits_per_level ** levels):
-        block_row = []
-        for y in range(splits_per_level ** levels):
-            block_row.append(chunks[(x, y)])
-        block.append(block_row)
-    return np.block(block)
+def reconstitute(chunks, profile):
+    def to_list_of_lists(level, partial_position):
+        if level == profile.position_len:
+            return chunks[tuple(partial_position)]
+        return [to_list_of_lists(level + 1, partial_position + [i]) for i in range(profile.deepest_split)]
+    return np.block(to_list_of_lists(0, []))
 
+def size(tree, profile):
+    matrix_size = sum(prod(matrix.shape) for _index, _row, matrix in tree.triples)
+    if tree.children == []:
+        tensor_size = prod(len(row) for _index, row, _matrix in tree.triples) \
+            * ((N // profile.deepest_split) ** profile.position_len) \
+            * (N ** (profile.dimensions - profile.position_len - len(tree.triples)))
+        return tensor_size, tensor_size + matrix_size
+    children = (size(child, profile) for child in tree.children)
+    tensor_size_only, tensor_size_with_matrix_size = 0, 0
+    for tso, tsms in children:
+        tensor_size_only += tso
+        tensor_size_with_matrix_size += tsms
+    return tensor_size_only, tensor_size_with_matrix_size + matrix_size        
 
-tree = factor_full(3, 2, 0)
+profile = FactorProfile(factor_indices = [0, 1], position_indices = [2, 3], levels = 3)
+
+tree = factor_full(profile)
 A = np.random.rand(N, N)
 chunks = matrix_to_chunks(A, tree)
-tensored_chunks = chunks_times_tensor(chunks, 3, 2, 0)
-compressed_result = reconstitute(tensored_chunks, 3, 2)
+tensored_chunks = chunks_times_tensor(chunks, profile)
+compressed_result = reconstitute(tensored_chunks, profile)
 full_tensor = np.fromfunction(np.vectorize(K_point), (N, N, N, N), dtype=int)
 full_result = np.tensordot(A, full_tensor, axes=2)
 print(np.linalg.norm(full_result - compressed_result) / np.linalg.norm(full_result))
+print(np.array(size(tree, profile)) / (N ** 4))
