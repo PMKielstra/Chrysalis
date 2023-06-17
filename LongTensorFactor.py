@@ -51,19 +51,6 @@ def evaluate(N, levels):
         new_rows = old_rows[idx[:k]]
         return new_rows, R.T
 
-    def compute_matrices(level, multirange, factor_index):
-        """Carry out a multi-level, single-axis butterfly, returning a subset of rows along that axis along with a list of interpolation matrices."""
-        if level == 0:
-            new_rows, R = ss_row_id(multirange, factor_index)
-            return [new_rows], [R]
-        next_steps = multirange.next_steps()
-        next_results = [compute_matrices(level - 1, step, factor_index) for step in next_steps]
-        next_rows = np.concatenate([row[-1] for row, U in next_results])
-        Us = [sp.linalg.block_diag(*UU) for UU in zip(*(U for row, U in next_results))]
-        rows = [np.concatenate(RR) for RR in zip(*(row for row, U in next_results))]
-        new_rows, new_U = ss_row_id(multirange.overwrite(SliceTree(next_rows), factor_index), factor_index)
-        return rows + [new_rows], Us + [new_U]
-
     class FactorProfile:
         """A class to store basicinformation about a factorization.  Carries out various useful calculations when it's created.""" 
         dimensions: int
