@@ -86,12 +86,14 @@ def evaluate(N, levels):
             self.deepest_split = splits_per_level ** levels
 
     class MultiFactorTree:
+        """Stores a point on the factorization tree.  Each triple in the list of triples is of the form (factor_index, rows_list, matrix)."""
         def __init__(self, triples, multirange):
             self.triples = triples
             self.multirange = multirange
             self.children = []
 
     def factor_to_tree(rows_lists, multirange, profile):
+        """Given a list of lists of rows and a multirange to which those rows are associated, recursively factor the tensor and output a MultiFactorTree."""
         triples = []
         merged_rows = []
         for factor_index, rows_list in zip(profile.factor_indices, rows_lists):
@@ -110,12 +112,12 @@ def evaluate(N, levels):
         return tree
 
     def factor_full(profile):
+        """A quick entry point to the factor_to_tree function, which provides it with the initial arguments for the recursion."""
         section_ranges = Multirange([SliceTree(list(range(N))) for _ in range(profile.dimensions)], profile.split_pattern)
         return factor_to_tree(tuple(np.array_split(list(range(N)), profile.deepest_split) for _ in range(len(profile.factor_indices))), section_ranges, profile)
-        trees = [factor_to_tree(rows_list, section_ranges, factor_index, profile) for factor_index in profile.factor_indices]
-        return merge_trees(trees, profile.factor_indices)
 
     def matrix_to_chunks(A, tree, profile):
+        """Apply a factor tree to a matrix, producing a dict of chunks ready to be multiplied by their relevant sub-tensors."""
         processed_matrix = A
         for index, _rows, matrix in tree.triples:
             processed_matrix = np.swapaxes(np.tensordot(matrix, processed_matrix, (0, index)), 0, index)
@@ -125,6 +127,7 @@ def evaluate(N, levels):
         return {k: v for child in tree.children for k, v in matrix_to_chunks(processed_matrix, child, profile).items()}
 
     def chunks_times_tensor(chunks, profile):
+        """Multiply the result of matrix_to_chunks by the important sub-tensors.  Return a dict of matrices (which is in a different format to the dict of chunks from before)."""
         split = np.array_split(list(range(N)), profile.deepest_split)
         new_chunks = {}
         for position in itertools.product(range(profile.deepest_split), repeat=profile.position_len):
@@ -137,20 +140,23 @@ def evaluate(N, levels):
         return new_chunks
 
     def reconstitute(chunks, profile):
+        """Recombine a dict of matrices from chunks_times_tensor to get a full matrix out."""
         def to_list_of_lists(level, partial_position):
             if level == profile.position_len:
                 return chunks[tuple(partial_position)]
             return [to_list_of_lists(level + 1, partial_position + [i]) for i in range(profile.deepest_split)]
         return np.block(to_list_of_lists(0, []))
 
-    def size(tree, profile):
+    def size(tree):
+        """Calculate the number of floats (or doubles, or complex numbers, or whatever) required to explicitly represent a MultiFactorTree.  The first return value counts just the tensors (which are normally implicit); the second counts both the tensors and the explicit matrix values."""
         matrix_size = sum(prod(matrix.shape) for _index, _row, matrix in tree.triples)
         if tree.children == []:
-            tensor_size = prod(len(row) for _index, row, _matrix in tree.triples) \
-                * ((N // profile.deepest_split) ** profile.position_len) \
-                * (N ** (profile.dimensions - profile.position_len - len(tree.triples)))
+            multirange_rows = list(tree.multirange)
+            for index, rows, _matrix in tree.triples:
+                multirange_rows[index] = rows
+            tensor_size = prod(len(r) for r in multirange_rows)
             return tensor_size, tensor_size + matrix_size
-        children = (size(child, profile) for child in tree.children)
+        children = (size(child) for child in tree.children)
         tensor_size_only, tensor_size_with_matrix_size = 0, 0
         for tso, tsms in children:
             tensor_size_only += tso
@@ -158,6 +164,7 @@ def evaluate(N, levels):
         return tensor_size_only, tensor_size_with_matrix_size + matrix_size
 
     def max_rank(tree):
+        """Determine the maximum rank at every level of a tree."""
         if tree.children == []:
             return [tree.triples[0][2].shape[1]]
         rank_children = [max_rank(child) for child in tree.children]
@@ -166,6 +173,7 @@ def evaluate(N, levels):
     profile = FactorProfile(factor_indices = [0, 1], position_indices = [2, 3], levels = levels)
 
     tree = factor_full(profile)
+    return size(tree)
     A = np.random.rand(N, N)
     chunks = matrix_to_chunks(A, tree, profile)
     tensored_chunks = chunks_times_tensor(chunks, profile)
