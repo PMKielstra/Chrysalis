@@ -123,8 +123,6 @@ def evaluate(N, levels):
             for index, rows in zip(profile.factor_indices, rows_list):
                 multirange = multirange.overwrite(SliceTree(rows), index)
             tensor = K_from_coords(list(multirange))
-            print(matrix.shape)
-            print(tensor.shape)
             new_matrix = np.tensordot(matrix, tensor, axes=matrix.ndim)
             new_chunks[position] = new_matrix
         return new_chunks
@@ -160,7 +158,7 @@ def evaluate(N, levels):
         rank_children = [max_rank(child) for child in tree.children]
         return [tree.triples[0][2].shape[1]] + [max(r[i] for r in rank_children) for i in range(len(rank_children[0]))]
 
-    profile = FactorProfile(factor_indices = [2], position_indices = [3, 4, 5], levels = levels)
+    profile = FactorProfile(factor_indices = [0, 1, 2], position_indices = [3, 4, 5], levels = levels)
 
     tree = factor_full(profile)
     A = np.random.rand(N, N, N)
