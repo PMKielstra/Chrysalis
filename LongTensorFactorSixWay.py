@@ -61,7 +61,7 @@ def evaluate(N, levels):
         levels: int
         splits_per_level: int
 
-        def __init__(self, dimensions=4, factor_indices=None, position_indices=None, levels=2, splits_per_level=2):
+        def __init__(self, dimensions=6, factor_indices=None, position_indices=None, levels=2, splits_per_level=2):
             self.dimensions, self.levels, self.splits_per_level = dimensions, levels, splits_per_level
             if factor_indices is None:
                 factor_indices = list(range(dimensions // 2))
@@ -123,7 +123,7 @@ def evaluate(N, levels):
             for index, rows in zip(profile.factor_indices, rows_list):
                 multirange = multirange.overwrite(SliceTree(rows), index)
             tensor = K_from_coords(list(multirange))
-            new_matrix = np.tensordot(matrix, tensor, axes=2)
+            new_matrix = np.tensordot(matrix, tensor, axes=matrix.ndim)
             new_chunks[position] = new_matrix
         return new_chunks
 
@@ -158,25 +158,24 @@ def evaluate(N, levels):
         rank_children = [max_rank(child) for child in tree.children]
         return [tree.triples[0][2].shape[1]] + [max(r[i] for r in rank_children) for i in range(len(rank_children[0]))]
 
-    profile = FactorProfile(factor_indices = [0, 1], position_indices = [2, 3], levels = levels)
+    profile = FactorProfile(factor_indices = [0, 1, 2], position_indices = [3, 4, 5], levels = levels)
 
     tree = factor_full(profile)
-    return size(tree)
-    A = np.random.rand(N, N)
-    chunks = matrix_to_chunks(A, tree, profile)
-    tensored_chunks = chunks_times_tensor(chunks, profile)
-    compressed_result = reconstitute(tensored_chunks, profile)
-    return max_rank(tree)
-    return compressed_result.shape
-    print("Now building full tensor...")
-    full_tensor = K_from_coords(tuple(tuple(range(N)) for _ in range(4)))
-    full_result = np.tensordot(A, full_tensor, axes=2)
-    return np.linalg.norm(full_result - compressed_result) / np.linalg.norm(full_result)
+##    A = np.random.rand(N, N, N)
+##    chunks = matrix_to_chunks(A, tree, profile)
+##    tensored_chunks = chunks_times_tensor(chunks, profile)
+##    compressed_result = reconstitute(tensored_chunks, profile)
+##    return max_rank(tree)
+##    return compressed_result.shape
+##    print("Now building full tensor...")
+##    full_tensor = K_from_coords(tuple(tuple(range(N)) for _ in range(6)))
+##    full_result = np.tensordot(A, full_tensor, axes=3)
+##    return np.linalg.norm(full_result - compressed_result) / np.linalg.norm(full_result)
     
 
-logNs = [5, 6, 7, 8]
+logNs = [3, 4, 5, 6]
 times = []
 for logN in tqdm(logNs):
     t = time.time()
-    evaluate(2 ** logN, logN - 3)
+    evaluate(2 ** logN, logN - 2)
     times.append(time.time() - t)
