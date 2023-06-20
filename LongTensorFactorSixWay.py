@@ -23,7 +23,9 @@ def evaluate(N, levels):
     def K_from_coords(coords_list):
         coords = np.meshgrid(*coords_list, indexing='ij')
         halflen = len(coords_list) // 2
-        norm = np.sqrt(1 + sum(((coords[i] - coords[i + halflen]) / (N - 1)) ** 2 for i in range(halflen)))
+        leftstack = np.stack(coords[:halflen], axis=0)
+        rightstack = np.stack(coords[halflen:], axis=0)
+        norm = np.sqrt(1 + np.sum(((leftstack - rightstack) / (N - 1)) ** 2, axis=0))
         return np.exp(1j * N * np.pi * norm) / norm
 
     n_subsamples = 20
