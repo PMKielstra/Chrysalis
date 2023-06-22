@@ -11,14 +11,19 @@ import itertools
 import time
 
 from SliceManagement import SliceTree, split_to_tree, Multirange, EXTEND, IGNORE
+from SparseDiag import SparseDiag
+
+t = 0
+def tick():
+    global t
+    t = time.time()
+
+def tock():
+    global t
+    return time.time() - t
 
 def evaluate(N, levels):
     eps = 1e-6
-
-    def K(r1, r2):
-        """Tensor kernel representing the interaction between the two points r1 and r2.  Currently unused, but kept around as a reference."""
-        d = np.linalg.norm(r1 - r2)
-        return np.exp(1j * N * np.pi * d) / d
 
     def K_from_coords(coords_list):
         coords = np.meshgrid(*coords_list, indexing='ij')
@@ -55,15 +60,17 @@ def evaluate(N, levels):
         return new_rows, R.T
 
     class FactorProfile:
-        """A class to store basicinformation about a factorization.  Carries out various useful calculations when it's created.""" 
+        """A class to store basic information about a factorization.  Carries out various useful calculations when it's created.""" 
         dimensions: int
         factor_indices: list
         position_indices: list
         position_len: int
         levels: int
         splits_per_level: int
+        split_pattern: list
+        deepest_split: list
 
-        def __init__(self, dimensions=6, factor_indices=None, position_indices=None, levels=2, splits_per_level=2):
+        def __init__(self, dimensions, factor_indices=None, position_indices=None, levels=2, splits_per_level=2):
             self.dimensions, self.levels, self.splits_per_level = dimensions, levels, splits_per_level
             if factor_indices is None:
                 factor_indices = list(range(dimensions // 2))
@@ -81,6 +88,7 @@ def evaluate(N, levels):
             self.triples = triples
             self.multirange = multirange
             self.children = []
+            self.subtensor = None
 
     def factor_to_tree(rows_lists, multirange, profile):
         """Given a list of lists of rows and a multirange to which those rows are associated, recursively factor the tensor and output a MultiFactorTree."""
@@ -92,13 +100,17 @@ def evaluate(N, levels):
                 row, R = ss_row_id(multirange.overwrite(SliceTree(r), factor_index), factor_index)
                 new_rows.append(row)
                 Rs.append(R)
-            triples.append((factor_index, np.concatenate(new_rows), sp.linalg.block_diag(*Rs)))
+            triples.append((factor_index, np.concatenate(new_rows), SparseDiag(Rs)))
             if len(rows_lists[0]) > 1:
                 merged_rows.append([np.concatenate((a, b)) for a, b in zip(new_rows[::2], new_rows[1::2])])
         tree = MultiFactorTree(triples, multirange)
         if len(rows_lists[0]) > 1:
             next_steps = multirange.next_steps()
             tree.children = [factor_to_tree(merged_rows, step, profile) for step in next_steps]
+        else:
+            for index, rows, _matrix in tree.triples:
+                multirange = multirange.overwrite(SliceTree(rows), index)
+            tree.subtensor = K_from_coords(list(multirange))
         return tree
 
     def factor_full(profile):
@@ -111,9 +123,10 @@ def evaluate(N, levels):
         processed_matrix = A
         for index, _rows, matrix in tree.triples:
             processed_matrix = np.moveaxis(np.tensordot(matrix, processed_matrix, (0, index)), range(index + 1), itertools.chain([index], range(index)))
+            del matrix
         if tree.children == []:
             position = tuple(tree.multirange[i].position for i in profile.position_indices)
-            return {position: ([row for _index, row, _matrix in tree.triples], processed_matrix, tree.multirange)}
+            return {position: (processed_matrix, tree.subtensor)}
         return {k: v for child in tree.children for k, v in matrix_to_chunks(processed_matrix, child, profile).items()}
 
     def chunks_times_tensor(chunks, profile):
@@ -121,11 +134,8 @@ def evaluate(N, levels):
         split = np.array_split(list(range(N)), profile.deepest_split)
         new_chunks = {}
         for position in itertools.product(range(profile.deepest_split), repeat=profile.position_len):
-            rows_list, matrix, multirange = chunks[position]
-            for index, rows in zip(profile.factor_indices, rows_list):
-                multirange = multirange.overwrite(SliceTree(rows), index)
-            tensor = K_from_coords(list(multirange))
-            new_matrix = np.tensordot(matrix, tensor, axes=matrix.ndim)
+            matrix, subtensor = chunks[position]
+            new_matrix = np.tensordot(matrix, subtensor, axes=matrix.ndim)
             new_chunks[position] = new_matrix
         return new_chunks
 
@@ -141,10 +151,7 @@ def evaluate(N, levels):
         """Calculate the number of floats (or doubles, or complex numbers, or whatever) required to explicitly represent a MultiFactorTree.  The first return value counts just the tensors (which are normally implicit); the second counts both the tensors and the explicit matrix values."""
         matrix_size = sum(prod(matrix.shape) for _index, _row, matrix in tree.triples)
         if tree.children == []:
-            multirange_rows = list(tree.multirange)
-            for index, rows, _matrix in tree.triples:
-                multirange_rows[index] = rows
-            tensor_size = prod(len(r) for r in multirange_rows)
+            tensor_size = tree.subtensor.size
             return tensor_size, tensor_size + matrix_size
         children = (size(child) for child in tree.children)
         tensor_size_only, tensor_size_with_matrix_size = 0, 0
@@ -160,17 +167,30 @@ def evaluate(N, levels):
         rank_children = [max_rank(child) for child in tree.children]
         return [tree.triples[0][2].shape[1]] + [max(r[i] for r in rank_children) for i in range(len(rank_children[0]))]
 
-    profile = FactorProfile(factor_indices = [0, 1, 2], position_indices = [3, 4, 5], levels = levels)
+    profile = FactorProfile(dimensions = 6, factor_indices = [0, 1, 2], position_indices = [3, 4, 5], levels = levels)
 
+    tick()
     tree = factor_full(profile)
+    time_to_factor = tock()
+    
     A = np.random.rand(N, N, N)
+
+    tick()
     chunks = matrix_to_chunks(A, tree, profile)
     tensored_chunks = chunks_times_tensor(chunks, profile)
     compressed_result = reconstitute(tensored_chunks, profile)
-    print("Now building full tensor...")
-    full_tensor = K_from_coords(tuple(tuple(range(N)) for _ in range(6)))
-    full_result = np.tensordot(A, full_tensor, axes=3)
-    return np.linalg.norm(full_result - compressed_result) / np.linalg.norm(full_result)
-    
+    time_to_compress = tock()
 
-print(evaluate(16, 2))
+    _tsize, total_size = size(tree)
+
+    return time_to_factor, time_to_compress, total_size, max_rank(tree)
+
+import csv
+with open('profile_6d.csv', mode='w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(["N", "Time to factor", "Time to compress", "Total size", "Max rank"])
+    logNs = [3, 4, 5]
+    for logN in tqdm(logNs):
+        N = 2 ** logN
+        ttf, ttc, ts, mr = evaluate(N, logN - 2)
+        writer.writerow([N, ttf, ttc, ts, str(mr)])
