@@ -71,8 +71,7 @@ def propagate_up(tree):
     if tree.children == []:
         split_As = tree.down_results
         return np.concatenate([rm[1].dot(A) for rm, A in zip(tree.rows_mats, split_As)])
-    else:
-        split_As = [propagate_up(child) for child in tree.children]
+    split_As = [propagate_up(child) for child in tree.children]
     return block_diag(*[rm[1] for rm in tree.rows_mats]).dot(sum(split_As))
 
 
