@@ -62,8 +62,6 @@ def list_transpose(l):
 def propagate_down(transposed_lists, tree):
     if tree.children == []:
         assert len(transposed_lists) == 1
-        for tree_rows_mats, down_rows_mats in zip(tree.rows_mats, transposed_lists[0]):
-            print(len(tree_rows_mats[0]) * len(down_rows_mats[0]))
         tree.down_results = [K_from_coords((tree_rows_mats[0], down_rows_mats[0])).dot(down_rows_mats[1]) for tree_rows_mats, down_rows_mats in zip(tree.rows_mats, transposed_lists[0])]
         return
     for i, child in enumerate(tree.children):
@@ -72,7 +70,7 @@ def propagate_down(transposed_lists, tree):
 def propagate_up(tree):
     if tree.children == []:
         split_As = tree.down_results
-        return block_diag(*[rm[1] for rm in tree.rows_mats]).dot(np.concatenate(split_As))
+        return np.concatenate([rm[1].dot(A) for rm, A in zip(tree.rows_mats, split_As)])
     else:
         split_As = [propagate_up(child) for child in tree.children]
     return block_diag(*[rm[1] for rm in tree.rows_mats]).dot(sum(split_As))
