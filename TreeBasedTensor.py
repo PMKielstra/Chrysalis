@@ -6,8 +6,8 @@ from tensorly import unfold
 import itertools
 import matplotlib.pyplot as plt
 
-N = 1024
-eps = 1e-10
+N = 64
+eps = 1e-6
 
 def K_from_coords(coords_list):
     coords = np.meshgrid(*coords_list, indexing='ij')
@@ -62,7 +62,9 @@ def list_transpose(l):
 def propagate_down(transposed_lists, tree):
     if tree.children == []:
         assert len(transposed_lists) == 1
-        tree.down_results = [K_from_coords((tree_rows_mats[0], down_rows_mats[0])).dot(down_rows_mats[1]) for tree_rows_mats, down_rows_mats in zip(tree.rows_mats, transposed_lists[0])]
+        for tree_row_mat, down_row_mat in zip(tree.rows_mats, transposed_lists[0]):
+            K = K_from_coords([tree_row_mat[0], list(range(N)), down_row_mat[0], list(range(N))])
+            tree.down_results.append(np.tensordot(K, down_row_mat[1], axes=2))
         return
     for i, child in enumerate(tree.children):
         propagate_down(transposed_lists[i*(len(transposed_lists) // len(tree.children)) : (i+1) * (len(transposed_lists) // len(tree.children))], child)
@@ -75,20 +77,19 @@ def propagate_up(tree):
     return block_diag(*(rm[1] for rm in tree.rows_mats)).dot(sum(split_As))
 
 
-mr_rows = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N)))], [0, 2])
-mr_cols = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N)))], [2, 0])
-split_ranges = np.array_split(list(range(N)), 64)
-A = np.random.rand(N)
-split_A = np.array_split(A, 128)
+mr_rows = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N)))], [0, 0, 2, 2])
+mr_cols = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N)))], [2, 2, 0, 0])
+split_ranges = np.array_split(list(range(N)), 8)
+A = np.random.rand(N, N)
+split_A = np.array_split(A, 16)
 
-tree_rows = factor_to_tree(split_ranges, mr_rows, 0, 3)
+tree_rows = factor_to_tree(split_ranges, mr_rows, 0, 1)
 k = list_transpose(apply_down(split_A, tree_rows, 0))
 
-tree_cols = factor_to_tree(split_ranges, mr_cols, 1, 3)
+tree_cols = factor_to_tree(split_ranges, mr_cols, 2, 1)
 propagate_down(k, tree_cols)
 compressed_A = propagate_up(tree_cols)
 
-true_A = K_from_coords([list(range(N)), list(range(N))]).dot(A)
-
+true_A = np.tensordot(A, K_from_coords([list(range(N)), list(range(N)), list(range(N)), list(range(N))]), axes=((0, 1), (2, 3)))
 print(np.linalg.norm(compressed_A - true_A) / np.linalg.norm(true_A))
 
