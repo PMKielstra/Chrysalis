@@ -7,7 +7,7 @@ import itertools
 import matplotlib.pyplot as plt
 
 N = 64
-eps = 1e-6
+eps = 1e-2
 
 def K_from_coords(coords_list):
     coords = np.meshgrid(*coords_list, indexing='ij')
@@ -38,8 +38,13 @@ class FactorTree:
         self.children = []
         self.down_results = []
 
+def extend_to_sqrt(r):
+    if r[0] < 32:
+        return list(range(32))
+    return list(range(32, 64))
+
 def factor_to_tree(rows_lists, multirange, factor_axis, level):
-    rows_mats = [ss_row_id(multirange.overwrite(SliceTree(r), factor_axis), factor_axis) for r in rows_lists]
+    rows_mats = [ss_row_id(multirange.overwrite(SliceTree(r), factor_axis).overwrite(SliceTree(extend_to_sqrt(r)), factor_axis + 1), factor_axis) for r in rows_lists]
     new_rows = [np.concatenate((p[0], q[0])) for p, q in zip(rows_mats[::2], rows_mats[1::2])]
     tree = FactorTree(rows_mats)
     if level > 0:
@@ -76,7 +81,6 @@ def propagate_up(tree):
     split_As = [propagate_up(child) for child in tree.children]
     return block_diag(*(rm[1] for rm in tree.rows_mats)).dot(sum(split_As))
 
-
 mr_rows = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N)))], [0, 0, 2, 2])
 mr_cols = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N))), SliceTree(list(range(N)))], [2, 2, 0, 0])
 split_ranges = np.array_split(list(range(N)), 8)
@@ -87,6 +91,7 @@ tree_rows = factor_to_tree(split_ranges, mr_rows, 0, 1)
 k = list_transpose(apply_down(split_A, tree_rows, 0))
 
 tree_cols = factor_to_tree(split_ranges, mr_cols, 2, 1)
+print(np.array(k).shape)
 propagate_down(k, tree_cols)
 compressed_A = propagate_up(tree_cols)
 
