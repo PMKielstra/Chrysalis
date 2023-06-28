@@ -40,7 +40,7 @@ class FactorTree:
         self.children = []
 
 def extend_to_sqrt(r):
-    return r # TODO: COME UP WITH A SMART WAY OF DOING THIS
+    return list(range(N)) # TODO: COME UP WITH A SMART WAY OF DOING THIS
 
 FACTOR_AXIS_SOURCE = 0
 FACTOR_AXIS_OBSERVER = 2
