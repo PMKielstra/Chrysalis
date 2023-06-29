@@ -25,6 +25,7 @@ def np_sample(range_x):
 
 def ss_row_id(sampled_ranges, factor_index):
     """Carries out a subsampled row ID for a tensor, unfolded along factor_index."""
+    # Step 1: Subsample
     subsamples = []
     for i, sr in enumerate(sampled_ranges):
         if i != factor_index and len(sr) > n_subsamples:
@@ -108,7 +109,7 @@ def apply_up(positions_dicts_with_cols, off_cols, tree, leaf_list):
 
 def build_factor_forest(levels, off_split_number):
     off_cols_lists = np.array_split(range(N), off_split_number)
-    rows_list = np.array_split(range(N), 2 * POSITION_POWER ** levels) # TODO: Check formula.  Right now I only know it works with level=1.
+    rows_list = np.array_split(range(N), 2 ** (2 * levels + 1))
     passive = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N)))], [2, 2])
     trees_and_leaf_lists = [factor_to_tree(rows_list, rows_list, off_cols, passive, levels) for off_cols in off_cols_lists]
     return off_cols_lists, trees_and_leaf_lists
