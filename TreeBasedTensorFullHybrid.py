@@ -4,6 +4,7 @@ import scipy.linalg.interpolative as interp
 from SliceManagement import Multirange, SliceTree
 from tensorly import unfold
 import itertools
+import random
 import matplotlib.pyplot as plt
 
 N = 64
@@ -17,10 +18,22 @@ def K_from_coords(coords_list):
     norm = np.sqrt(1 + np.sum(((leftstack - rightstack) / (N - 1)) ** 2, axis=0))
     return np.exp(1j * N * np.pi * norm) / norm
 
+n_subsamples = 25
+def np_sample(range_x):
+    """Subsample a list at random."""
+    return np.array(random.sample(list(range_x), min(n_subsamples, len(range_x))))
+
 def ss_row_id(sampled_ranges, factor_index):
     """Carries out a subsampled row ID for a tensor, unfolded along factor_index."""
+    subsamples = []
+    for i, sr in enumerate(sampled_ranges):
+        if i != factor_index and len(sr) > n_subsamples:
+            subsamples.append(np_sample(sr))
+        else:
+            subsamples.append(sr)
+    
     # Step 2: Set up a tensor from the points chosen by the subsampling
-    A = K_from_coords(sampled_ranges)
+    A = K_from_coords(subsamples)
 
     # Step 3: Unfold the tensor and carry out ID
     unfolded = unfold(A, factor_index).T # The transpose here is because we want row decompositions, not column, but Scipy only does column decompositions, not rows.
@@ -108,7 +121,7 @@ def apply(A, factor_forest):
 
 
 A = np.random.rand(N, N)
-factor_forest = build_factor_forest(2, 1)
+factor_forest = build_factor_forest(1, 1)
 compressed_A = apply(A, factor_forest)
 true_A = np.tensordot(A, K_from_coords([list(range(N)), list(range(N)), list(range(N)), list(range(N))]), axes=((0, 1), (2, 3)))
 print(np.linalg.norm(compressed_A - true_A) / np.linalg.norm(true_A))
