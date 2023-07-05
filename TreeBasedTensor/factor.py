@@ -1,24 +1,18 @@
-import random
 import numpy as np
 import scipy.linalg.interpolative as interp
 import tensorly
 
-from czip import czip
+from utils import czip, subsample
 from multirange import SliceTree, Multirange
 from tensor import K_from_coords
-
-n_subsamples = 32
-def np_sample(range_x):
-    """Subsample a list at random."""
-    return np.array(random.sample(list(range_x), min(n_subsamples, len(range_x))))
 
 def ss_row_id(N, eps, sampled_ranges, factor_index):
     """Carries out a subsampled row ID for a tensor, unfolded along factor_index."""
     # Step 1: Subsample
     subsamples = []
     for i, sr in enumerate(sampled_ranges):
-        if i != factor_index and len(sr) > n_subsamples:
-            subsamples.append(np_sample(sr))
+        if i != factor_index:
+            subsamples.append(subsample(sr))
         else:
             subsamples.append(sr)
     

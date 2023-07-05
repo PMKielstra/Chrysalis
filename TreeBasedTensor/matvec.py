@@ -1,7 +1,7 @@
 import numpy as np
 import scipy as sp
 
-from czip import czip
+from utils import czip
 from factor import BOTH, UP, DOWN
 from tensor import AK
 
