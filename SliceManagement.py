@@ -71,3 +71,6 @@ class Multirange(AugmentedList):
     def overwrite(self, new_tree, index):
         assert isinstance(new_tree, SliceTree)
         return Multirange([(new_tree if i == index else r) for i, r in enumerate(self.list())], self.split_pattern)
+
+    def position(self):
+        return tuple(s.position for s in self.list())
