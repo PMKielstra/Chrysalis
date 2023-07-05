@@ -77,6 +77,7 @@ def build_factor_forest(N, eps, levels, direction=BOTH):
     """Build a "factor forest": a tuple (levels, off_cols_lists, trees, direction), giving the number of levels of factorization, the lists of columns for each tree, the list of actual factor trees, and the direction of factorization (UP, DOWN, or BOTH)."""
     assert eps < 1
     assert levels >= 1
+    assert direction in (BOTH, DOWN, UP)
 
     off_split_number = 2 ** levels if direction == BOTH else 1
     off_cols_lists = np.array_split(range(N), off_split_number)

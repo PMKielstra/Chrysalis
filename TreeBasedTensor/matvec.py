@@ -20,9 +20,7 @@ def apply_down(split_A, tree):
             
     positions_dict = {}
     if tree.children == []:
-        positions_dict[tree.position] = []
-        for i in range(len(A_rows_mats_down)):
-            positions_dict[tree.position].append((A_rows_mats_down[i][0], A_rows_mats_down[i][1]))
+        positions_dict[tree.position] = A_rows_mats_down
     else:
         for child in tree.children:
             positions_dict.update(apply_down([Arm[1] for Arm in A_rows_mats_down], child))
@@ -93,7 +91,7 @@ def apply(A, factor_forest):
         # We've already done some compressions in the downward direction, and we'll need to do some more in the upward direction.  At the center, we carry out a transposition.
         
         def get_transposed_KA_leaf(col_split_position, up_leaf):
-            
+
             assert len(up_leaf.rows_mats_up) == 2 ** levels
             
             x, y = up_leaf.position
