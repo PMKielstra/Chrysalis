@@ -7,9 +7,8 @@ import itertools
 import random
 import matplotlib.pyplot as plt
 
-N = 8
-eps = 1e-2
-
+N = 64
+eps = 1e-6
 
 def czip(*ls):
     for l in ls:
@@ -50,7 +49,6 @@ def ss_row_id(sampled_ranges, factor_index):
     # Step 4: Map the rows chosen by the ID, which are a subset of [1, ..., len(multirange[factor_index])], back to a subset of the relevant actual rows
     old_rows = sampled_ranges[factor_index]
     new_rows = old_rows[idx[:k]]
-    #return old_rows, np.eye(len(old_rows)) # BYPASS
     return new_rows, R.T
 
 class FactorTree:
@@ -151,12 +149,12 @@ def apply(A, factor_forest):
         split_As = []
         x, y = up_leaf.position
         up_cols = off_cols_lists[col_split_position]
-        down_cols = off_cols_lists[x]
+        down_cols = off_cols_lists[y]
         split_As = []
         assert len(up_leaf.rows_mats_up) == 2 ** levels
         for w in range(2 ** levels):
             up_rows, up_mat = up_leaf.rows_mats_up[w]
-            down_rows, down_mat = transpose_dicts[x][(col_split_position, w)][y]
+            down_rows, down_mat = transpose_dicts[y][(w, col_split_position)][x]
             K = K_from_coords((down_rows, down_cols, up_rows, up_cols))
             AK = np.tensordot(down_mat, K, axes=2)
             split_As.append(up_mat.dot(AK))
@@ -186,10 +184,8 @@ def just_apply_up(A, factor_forest):
     split_KA = apply_up(trees_and_leaf_lists[0][0], get_transposed_KA_leaf)
     return split_KA
 
-A = np.zeros((N, N))
-A[0, 6] = 1
-factor_forest = build_factor_forest(1)
+A = np.random.rand(N, N)
+factor_forest = build_factor_forest(3)
 compressed_A = apply(A, factor_forest)
 true_A = np.tensordot(A, K_from_coords([list(range(N)), list(range(N)), list(range(N)), list(range(N))]), axes=2)
-print(np.real(compressed_A - true_A))
 print(np.linalg.norm(compressed_A - true_A) / np.linalg.norm(true_A))
