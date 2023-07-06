@@ -74,3 +74,9 @@ def total_memory(factor_forest):
     _N, _levels, _off_cols_lists, trees, _direction = factor_forest
     mm = sum(matrix_memory(tree) for tree in trees)
     return mm + tensor_memory(factor_forest), mm
+
+def max_leaf_row_length(tree):
+    if tree.children == []:
+        return max(max(len(rows) for rows, _mat in tree.rows_mats_up), max(len(rows) for rows, _mat in tree.rows_mats_down))
+    return max(max_leaf_row_length(child) for child in tree.children)
+                   
