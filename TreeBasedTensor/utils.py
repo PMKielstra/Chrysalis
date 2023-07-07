@@ -7,8 +7,7 @@ def czip(*ls):
         assert len(l) == len(ls[0])
     return zip(*ls)
 
-n_subsamples = 20
-def subsample(range_x):
+def subsample(range_x, n_subsamples):
     """Subsample a list at random."""
     if len(range_x) <= n_subsamples:
         return range_x
@@ -19,7 +18,7 @@ def slice_by_index(A, down_index, i=0):
     if i == len(down_index):
         return A
     slice_list = [slice(None)] * i + [down_index[i]]
-    return slice_by_down_index(A[tuple(slice_list)], down_index, i + 1)
+    return slice_by_index(A[tuple(slice_list)], down_index, i + 1)
 
 def multilevel_access(l, indices, assert_single_element=False):
     """Find l[indices[0]][indices[1]][indices[2]]..., optionally asserting along the way that there is only one element at each level."""

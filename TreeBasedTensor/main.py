@@ -31,17 +31,18 @@ with open(f"profile_{dimens}d.csv", mode="w", newline="") as csvfile, PoolExecut
     if MPI:
         pool.workers_exit()
     writer = csv.writer(csvfile)
-    writer.writerow(["N", "Time to factor", "Time to compress", "Total size", "Max rank"])
+    writer.writerow(["N", "Time to factor", "Time to compress", "Total size", "Max rank", "Accuracy"])
     logNs = [4]
     for logN in tqdm(logNs):
-        N = 2 ** (logN)
+        N = 2 ** (logN + 2)
         A = np.random.rand(* [N] * dimens)
         profile = Profile(
             N = N,
             dimens = dimens,
             eps = eps,
             levels = logN // 2,
-            direction = BOTH
+            direction = BOTH,
+            subsamples = 10
             )
         tick()
         factor_forest = build_factor_forest(pool, profile)
@@ -49,6 +50,8 @@ with open(f"profile_{dimens}d.csv", mode="w", newline="") as csvfile, PoolExecut
         ts = total_memory(profile, factor_forest)[0]
         mr = max_leaf_row_length_forest(factor_forest)
         tick()
-        apply(A, profile, factor_forest)
+        compressed_AK = apply(A, profile, factor_forest)
         ttc = tock()
-        writer.writerow([N, ttf, ttc, ts, mr])
+        accuracy = ss_accuracy(profile, A, compressed_AK)
+        print(accuracy)
+        writer.writerow([N, ttf, ttc, ts, mr, accuracy])

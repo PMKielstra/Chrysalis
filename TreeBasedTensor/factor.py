@@ -16,7 +16,7 @@ UP = -1
 class Profile:
     """Stores all the parameters necessary for a factorization."""
 
-    def __init__(self, N, dimens, eps, levels, direction=BOTH, processes=None):
+    def __init__(self, N, dimens, eps, levels, direction=BOTH, subsamples = 20, processes=None):
         assert N > 0
         assert dimens > 0
         assert eps < 1
@@ -27,6 +27,7 @@ class Profile:
         self.eps = eps
         self.levels = levels
         self.direction = direction
+        self.subsamples = subsamples
         self.processes = processes
         self.factor_source = 0 # TODO: add the possibility to factor along different axes.
         self.factor_observer = dimens
@@ -43,7 +44,7 @@ def ss_row_id(profile, sampled_ranges, is_source):
     subsamples = []
     for i, sr in enumerate(sampled_ranges):
         if i != factor_index:
-            subsamples.append(subsample(sr))
+            subsamples.append(subsample(sr, profile.subsamples))
         else:
             subsamples.append(sr)
     
