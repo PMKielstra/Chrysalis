@@ -78,11 +78,14 @@ def total_memory(profile, factor_forest):
     return mm + tensor_memory(profile, factor_forest), mm
 
 def max_leaf_row_length(tree):
+    """Determine the maximum length of the list of rows (aka the maximum rank) at any leaf of a tree."""
     if tree.children == []:
-        return max(max(len(rows) for rows, _mat in tree.rows_mats_up), max(len(rows) for rows, _mat in tree.rows_mats_down))
+        return max(0 if tree.rows_mats_up is None else max(len(rows) for rows, _mat in tree.rows_mats_up),
+                   0 if tree.rows_mats_down is None else max(len(rows) for rows, _mat in tree.rows_mats_down))
     return max(max_leaf_row_length(child) for child in tree.children)
 
 def max_leaf_row_length_forest(factor_forest):
+    """Determine the maximum length of the list of rows (aka the maximum rank) at any leaf of any tree in a forest."""
     _off_cols_lists, trees = factor_forest
     return max(max_leaf_row_length(tree) for tree in multilevel_flatten(trees))
                    

@@ -13,25 +13,19 @@ UP = -1
 class Profile:
     """Stores all the parameters necessary for a factorization."""
 
-    def __init__(self, N, dimens, eps, levels, direction=BOTH, factor_source=None, factor_observer=None):
+    def __init__(self, N, dimens, eps, levels, direction=BOTH):
         assert N > 0
         assert dimens > 0
         assert eps < 1
         assert direction in (BOTH, UP, DOWN)
-        
-        if factor_source == None:
-            factor_source = 0
-            
-        if factor_observer == None:
-            factor_observer = dimens
 
         self.N = N
         self.dimens = dimens
         self.eps = eps
         self.levels = levels
         self.direction = direction
-        self.factor_source = factor_source
-        self.factor_observer = factor_observer
+        self.factor_source = 0 # TODO: add the possibility to factor along different axes.
+        self.factor_observer = dimens
         self.off_split_number = 2 ** levels if direction == BOTH else 1
         
     def factor_index(self, is_source):
@@ -95,7 +89,7 @@ def factor_to_tree(profile, rows_lists_source, rows_lists_observer, off_cols, pa
     tree = FactorTree(rows_mats_source, rows_mats_observer, passive_multirange.position(), root)
     
     if level > 0:
-        tree.children = [factor_to_tree(profile, new_rows_source, new_rows_observer, off_cols, next_step, level - 1, False) for i, next_step in enumerate(passive_multirange.next_steps())]
+        tree.children = [factor_to_tree(profile, new_rows_source, new_rows_observer, off_cols, next_step, level - 1, False) for next_step in passive_multirange.next_steps()]
     
     return tree
 

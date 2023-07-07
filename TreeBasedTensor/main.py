@@ -22,7 +22,7 @@ import csv
 with open(f"profile_{dimens}d.csv", mode="w", newline="") as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(["N", "Time to factor", "Time to compress", "Total size", "Max rank"])
-    logNs = [4]
+    logNs = [2, 4, 6]
     for logN in tqdm(logNs):
         N = 2 ** (logN)
         A = np.random.rand(* [N] * dimens)
