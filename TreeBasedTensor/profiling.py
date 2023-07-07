@@ -1,14 +1,13 @@
 import numpy as np
 from tensor import AK
-from utils import subsample
+from utils import subsample, multilevel_access, multilevel_flatten, multilevel_enumerate
 from factor import UP, DOWN, BOTH
 
 def ss_accuracy(A, compressed_AK, N):
     """Estimate the accuracy of compressed_AK as an estimation for A \times_{1, 2} K, subsampling the third and fourth axis to avoid running out of memory."""
-    x = subsample(range(N))
-    y = subsample(range(N))
-    compressed_AK_subsampled = compressed_AK[x][:, y]
-    true_AK_subsampled = AK(A, N, [list(range(N)), list(range(N)), x, y])
+    subsample_ranges = [subsample(range(N)) for _ in range(A.ndim)]
+    compressed_AK_subsampled = slice_by_index(compressed_AK, subsample_ranges)
+    true_AK_subsampled = AK(A, N, [list(range(N))] * A.ndim + subsample_ranges)
     return np.linalg.norm(compressed_AK_subsampled - true_AK_subsampled) / np.linalg.norm(true_AK_subsampled)
 
 def matrix_memory(tree):
@@ -36,47 +35,54 @@ def leaf_sum(f, tree):
         return f(tree)
     return sum(leaf_sum(f, child) for child in tree.children)
 
-def tensor_memory(factor_forest):
+def tensor_memory(profile, factor_forest):
     """Determine the total amount of memory used by the tensors in a factor forest."""
-    N, levels, off_cols_lists, trees, direction = factor_forest
+    off_cols_lists, trees = factor_forest
 
-    transpose_dicts = [down_rows_length_dict(tree) for tree in trees]
-    off_cols_len = len(off_cols_lists[0]) // 2 ** levels
+    def build_transpose_dict(trees, i):
+        if i == profile.dimens:
+            return down_rows_length_dict(trees)
+        return [build_transpose_dict(tree, i + 1) for tree in trees]
 
-    if direction == DOWN:
-        memory = 0
-        for x in range(2 ** levels):
-            for y in range(2 ** levels):
-                memory += transpose_dicts[0][(x, y)][0] * N * off_cols_len * off_cols_len
-        return memory
-                
-    elif direction == UP:
-        return leaf_sum(lambda leaf: off_cols_len * off_cols_len * len(tree.rows_mats_up[0]) * N, trees[0])
+    transpose_dicts = build_transpose_dict(trees, 1)
+    off_cols_len = len(off_cols_lists[0]) // 2 ** profile.levels
 
-    elif direction == BOTH:
+    if profile.direction == DOWN:
+        def block(dimen, position):
+            if dimen == 0:
+                return multilevel_access(transpose_dicts, [0] * (profile.dimens - 1), assert_single_element=True)[tuple(position)][0] * (N ** (profile.dimens - 1)) * (off_cols_len ** profile.dimens)
+            return sum(block(dimen - 1, position + [i]) for i in range(2 ** profile.levels))
+        return block(profile.dimens, [])
+
+    elif profile.direction == UP:
+        return leaf_sum(lambda leaf: (off_cols_len ** profile.dimens) * len(leaf.rows_mats_up[0][0]) * (N ** (profile.dimens - 1)), multilevel_access(trees, [0] * (profile.dimens - 1)))
+
+    elif profile.direction == BOTH:
         def size_transposed(col_split_position, up_leaf):
-            assert len(up_leaf.rows_mats_up) == 2 ** levels
-            
-            x, y = up_leaf.position
-            
+            assert len(up_leaf.rows_mats_up) == 2 ** profile.levels
+                        
             memory = 0
-            for w in range(2 ** levels):
+            for w in range(2 ** profile.levels):
                 up_rows, _up_mat = up_leaf.rows_mats_up[w]
-                down_len = transpose_dicts[y][(w, col_split_position)][x]
-                memory += down_len * off_cols_len * len(up_rows) * off_cols_len
+                down_len = multilevel_access(transpose_dicts, up_leaf.position[1:])[tuple([w] + col_split_position)][up_leaf.position[0]]
+                memory += down_len * (off_cols_len ** (profile.dimens - 1)) * len(up_rows) * (off_cols_len ** (profile.dimens - 1))
             return memory
-        return sum(leaf_sum(lambda leaf: size_transposed(i, leaf), tree) for i, tree in enumerate(trees))
+        return sum(leaf_sum(lambda leaf: size_transposed(i, leaf), tree) for i, tree in multilevel_enumerate(trees, profile.dimens - 1))
 
     raise Exception(f"{direction} is not a valid direction!")
 
-def total_memory(factor_forest):
+def total_memory(profile, factor_forest):
     """Determine the total memory, both including and excluding tensor cores, used by a factor forest."""
-    _N, _levels, _off_cols_lists, trees, _direction = factor_forest
-    mm = sum(matrix_memory(tree) for tree in trees)
-    return mm + tensor_memory(factor_forest), mm
+    _off_cols_lists, trees = factor_forest
+    mm = sum(matrix_memory(tree) for tree in multilevel_flatten(trees))
+    return mm + tensor_memory(profile, factor_forest), mm
 
 def max_leaf_row_length(tree):
     if tree.children == []:
         return max(max(len(rows) for rows, _mat in tree.rows_mats_up), max(len(rows) for rows, _mat in tree.rows_mats_down))
     return max(max_leaf_row_length(child) for child in tree.children)
+
+def max_leaf_row_length_forest(factor_forest):
+    _off_cols_lists, trees = factor_forest
+    return max(max_leaf_row_length(tree) for tree in multilevel_flatten(trees))
                    

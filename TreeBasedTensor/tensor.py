@@ -9,7 +9,7 @@ def K_from_coords(N, coords_list):
     return np.exp(1j * N * np.pi * norm) / norm
 
 def AK(A, N, coords_list):
-    return np.tensordot(A, K_from_coords(N, coords_list), axes=2)
+    return np.tensordot(A, K_from_coords(N, coords_list), axes=A.ndim)
 
 def AK_true(A, N):
-    return AK(A, N, [list(range(N))] * 4)
+    return AK(A, N, [list(range(N))] * (A.ndim * 2))

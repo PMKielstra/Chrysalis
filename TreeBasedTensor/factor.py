@@ -6,8 +6,41 @@ from utils import czip, subsample
 from multirange import SliceTree, Multirange
 from tensor import K_from_coords
 
-def ss_row_id(N, eps, sampled_ranges, factor_index):
+BOTH = 0
+DOWN = 1
+UP = -1
+
+class Profile:
+    """Stores all the parameters necessary for a factorization."""
+
+    def __init__(self, N, dimens, eps, levels, direction=BOTH, factor_source=None, factor_observer=None):
+        assert N > 0
+        assert dimens > 0
+        assert eps < 1
+        assert direction in (BOTH, UP, DOWN)
+        
+        if factor_source == None:
+            factor_source = 0
+            
+        if factor_observer == None:
+            factor_observer = dimens
+
+        self.N = N
+        self.dimens = dimens
+        self.eps = eps
+        self.levels = levels
+        self.direction = direction
+        self.factor_source = factor_source
+        self.factor_observer = factor_observer
+        self.off_split_number = 2 ** levels if direction == BOTH else 1
+        
+    def factor_index(self, is_source):
+        return self.factor_source if is_source else self.factor_observer
+    
+def ss_row_id(profile, sampled_ranges, is_source):
     """Carries out a subsampled row ID for a tensor, unfolded along factor_index."""
+    factor_index = profile.factor_index(is_source)
+    
     # Step 1: Subsample
     subsamples = []
     for i, sr in enumerate(sampled_ranges):
@@ -17,11 +50,11 @@ def ss_row_id(N, eps, sampled_ranges, factor_index):
             subsamples.append(sr)
     
     # Step 2: Set up a tensor from the points chosen by the subsampling
-    A = K_from_coords(N, subsamples)
+    A = K_from_coords(profile.N, subsamples)
 
     # Step 3: Unfold the tensor and carry out ID
     unfolded = tensorly.unfold(A, factor_index).T # The transpose here is because we want row decompositions, not column, but Scipy only does column decompositions, not rows.
-    k, idx, proj = interp.interp_decomp(unfolded, eps)
+    k, idx, proj = interp.interp_decomp(unfolded, profile.eps)
     R = interp.reconstruct_interp_matrix(idx, proj)
 
     # Step 4: Map the rows chosen by the ID, which are a subset of [1, ..., len(multirange[factor_index])], back to a subset of the relevant actual rows
@@ -38,17 +71,14 @@ class FactorTree:
         self.root = root
         self.children = []
 
-FACTOR_AXIS_SOURCE = 0
-FACTOR_AXIS_OBSERVER = 2
-
-def one_level_factor(N, eps, rows_lists, off_cols, passive_multirange, is_source):
+def one_level_factor(profile, rows_lists, off_cols, passive_multirange, is_source):
     """Carry out a single step of factorization for a single node in the factor tree.  Treat passive_multirange as either the range for the observer or for the source, depending on the value of is_source."""
     if is_source:
-        factor_ranges = [[r, off_cols] + list(passive_multirange) for r in rows_lists]
+        factor_ranges = [[r] + off_cols + list(passive_multirange) for r in rows_lists]
     else:
-        factor_ranges = [list(passive_multirange) + [r, off_cols] for r in rows_lists]
+        factor_ranges = [list(passive_multirange) + [r] + off_cols for r in rows_lists]
     
-    rows_mats = [ss_row_id(N, eps, fr, FACTOR_AXIS_SOURCE if is_source else FACTOR_AXIS_OBSERVER) for fr in factor_ranges]
+    rows_mats = [ss_row_id(profile, fr, is_source) for fr in factor_ranges]
     
     if len(rows_mats) > 1:
         new_rows = [np.concatenate((p[0], q[0])) for p, q in czip(rows_mats[::2], rows_mats[1::2])]
@@ -57,33 +87,28 @@ def one_level_factor(N, eps, rows_lists, off_cols, passive_multirange, is_source
     
     return rows_mats, new_rows
 
-BOTH = 0
-DOWN = 1
-UP = -1
-
-def factor_to_tree(N, eps, rows_lists_source, rows_lists_observer, off_cols, passive_multirange, level, direction, root=True):
+def factor_to_tree(profile, rows_lists_source, rows_lists_observer, off_cols, passive_multirange, level, root=True):
     """Recursively create a factor tree which goes either down, up, or both.  Decrements level every step and stops when it hits zero, allowing for partial factorizations."""
-    rows_mats_source, new_rows_source = (None, None) if direction == UP else one_level_factor(N, eps, rows_lists_source, off_cols, passive_multirange, is_source=True)
-    rows_mats_observer, new_rows_observer = (None, None) if direction == DOWN else one_level_factor(N, eps, rows_lists_observer, off_cols, passive_multirange, is_source=False)
+    rows_mats_source, new_rows_source = (None, None) if profile.direction == UP else one_level_factor(profile, rows_lists_source, off_cols, passive_multirange, is_source=True)
+    rows_mats_observer, new_rows_observer = (None, None) if profile.direction == DOWN else one_level_factor(profile, rows_lists_observer, off_cols, passive_multirange, is_source=False)
     
     tree = FactorTree(rows_mats_source, rows_mats_observer, passive_multirange.position(), root)
     
     if level > 0:
-        tree.children = [factor_to_tree(N, eps, new_rows_source, new_rows_observer, off_cols, next_step, level - 1, direction, False) for i, next_step in enumerate(passive_multirange.next_steps())]
+        tree.children = [factor_to_tree(profile, new_rows_source, new_rows_observer, off_cols, next_step, level - 1, False) for i, next_step in enumerate(passive_multirange.next_steps())]
     
     return tree
 
-def build_factor_forest(N, eps, levels, direction=BOTH):
+def build_factor_forest(profile):
     """Build a "factor forest": a tuple (levels, off_cols_lists, trees, direction), giving the number of levels of factorization, the lists of columns for each tree, the list of actual factor trees, and the direction of factorization (UP, DOWN, or BOTH)."""
-    assert eps < 1
-    assert levels >= 1
-    assert direction in (BOTH, DOWN, UP)
 
-    off_split_number = 2 ** levels if direction == BOTH else 1
-    off_cols_lists = np.array_split(range(N), off_split_number)
-    rows_list = np.array_split(range(N), 2 ** (2 * levels if direction == BOTH else levels))
-    passive = Multirange([SliceTree(list(range(N))), SliceTree(list(range(N)))], [2, 2])
-    
-    trees = [factor_to_tree(N, eps, rows_list, rows_list, off_cols, passive, levels, direction) for off_cols in off_cols_lists]
-        
-    return N, levels, off_cols_lists, trees, direction
+    off_cols_lists = np.array_split(range(profile.N), profile.off_split_number)
+    rows_list = np.array_split(range(profile.N), 2 ** (2 * profile.levels if profile.direction == BOTH else profile.levels))
+    passive = Multirange([SliceTree(list(range(profile.N))) for _ in range(profile.dimens)], [2 for _ in range(profile.dimens)])
+
+    def make_trees(previous_off_cols, level):
+        if level == 0:
+            return factor_to_tree(profile, rows_list, rows_list, previous_off_cols, passive, profile.levels)
+        return [make_trees(previous_off_cols + [off_cols], level - 1) for off_cols in off_cols_lists]
+            
+    return off_cols_lists, make_trees([], profile.dimens - 1)
