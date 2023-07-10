@@ -32,7 +32,7 @@ with open(f"profile_{dimens}d.csv", mode="w", newline="") as csvfile, PoolExecut
         pool.workers_exit()
     writer = csv.writer(csvfile)
     writer.writerow(["N", "Time to factor", "Time to compress", "Total size", "Max rank", "Accuracy"])
-    logNs = [4]
+    logNs = [6]
     for logN in tqdm(logNs):
         N = 2 ** (logN + 1)
         A = np.random.rand(* [N] * dimens)
@@ -43,7 +43,7 @@ with open(f"profile_{dimens}d.csv", mode="w", newline="") as csvfile, PoolExecut
             levels = logN // 2,
             direction = BOTH,
             subsamples = 20,
-            as_matrix = True
+            as_matrix = False
             )
         tick()
         factor_forest = build_factor_forest(pool, profile)
