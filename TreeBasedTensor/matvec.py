@@ -43,6 +43,9 @@ def apply(A, profile, factor_forest):
     
     off_cols_lists, trees = factor_forest
 
+    if profile.as_matrix:
+        A = np.ravel(A)
+
     # Step 1: Apply A down the factor forest, unless we're only applying up.
     if profile.direction in (BOTH, DOWN):
         print(MSG_APPLYING_DOWN)
@@ -63,7 +66,7 @@ def apply(A, profile, factor_forest):
         def block(dimen, position):
             if dimen == 0:
                 down_rows, down_mat = multilevel_access(transpose_dicts, [0] * (profile.dimens - 1), assert_single_element=True)[tuple(position)][0]
-                return AK(down_mat, profile.N, [down_rows] + [list(range(profile.N))] * (profile.dimens - 1) + [off_cols_lists[i] for i in position])
+                return AK(profile, down_mat, [down_rows] + [list(range(profile.N))] * (profile.dimens - 1) + [off_cols_lists[i] for i in position])
             return [block(dimen - 1, position + [i]) for i in range(2 ** profile.levels)]
         return np.block(block(profile.dimens, []))
     
@@ -76,7 +79,7 @@ def apply(A, profile, factor_forest):
             down_index = [off_cols_lists[i] for i in up_leaf.position]
             
             up_rows, up_mat = up_leaf.rows_mats_up[0]
-            return [np.tensordot(up_mat, AK(slice_by_index(A, down_index), profile.N, down_index + [up_rows] + [list(range(profile.N))] * (profile.dimens - 1)), axes=1)]
+            return [np.tensordot(up_mat, AK(profile, slice_by_index(A, down_index), down_index + [up_rows] + [list(range(profile.N))] * (profile.dimens - 1)), axes=1)]
         
         print(MSG_APPLYING_UP)
         split_KA = apply_up(get_KA_leaf, multilevel_access(trees, [0] * (profile.dimens - 1), assert_single_element=True))
@@ -96,7 +99,7 @@ def apply(A, profile, factor_forest):
             for w in range(2 ** profile.levels):
                 up_rows, up_mat = up_leaf.rows_mats_up[w]
                 down_rows, down_mat = multilevel_access(transpose_dicts, up_leaf.position[1:])[tuple([w] + col_split_position)][up_leaf.position[0]]
-                split_As.append(np.tensordot(up_mat, AK(down_mat, profile.N, [down_rows] + down_cols + [up_rows] + up_cols), axes=1))
+                split_As.append(np.tensordot(up_mat, AK(profile, down_mat, [down_rows] + down_cols + [up_rows] + up_cols), axes=1))
             return split_As
         
         print(MSG_APPLYING_UP)

@@ -6,9 +6,11 @@ from factor import UP, DOWN, BOTH
 accuracy_subsamples = 10
 def ss_accuracy(profile, A, compressed_AK):
     """Estimate the accuracy of compressed_AK as an estimation for A \times_{1, 2} K, subsampling the third and fourth axis to avoid running out of memory."""
-    subsample_ranges = [subsample(range(profile.N), accuracy_subsamples) for _ in range(A.ndim)]
+    if profile.as_matrix:
+        A = np.ravel(A)
+    subsample_ranges = [subsample(range(profile.N), accuracy_subsamples) for _ in range(profile.dimens)]
     compressed_AK_subsampled = slice_by_index(compressed_AK, subsample_ranges)
-    true_AK_subsampled = AK(A, profile.N, [list(range(profile.N))] * A.ndim + subsample_ranges)
+    true_AK_subsampled = AK(profile, A, [list(range(profile.N))] * profile.dimens + subsample_ranges)
     return np.linalg.norm(compressed_AK_subsampled - true_AK_subsampled) / np.linalg.norm(true_AK_subsampled)
 
 def matrix_memory(tree):

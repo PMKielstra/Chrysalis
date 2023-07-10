@@ -20,7 +20,7 @@ def tock():
     global t
     return time.time() - t
 
-dimens = 3 # Number of source or observer dimens, not source + observer dimens
+dimens = 2 # Number of source or observer dimens, not source + observer dimens
 eps = 1e-6
 
 MPI = len(sys.argv) > 1 and sys.argv[1] == "--mpi"
@@ -34,7 +34,7 @@ with open(f"profile_{dimens}d.csv", mode="w", newline="") as csvfile, PoolExecut
     writer.writerow(["N", "Time to factor", "Time to compress", "Total size", "Max rank", "Accuracy"])
     logNs = [4]
     for logN in tqdm(logNs):
-        N = 2 ** (logN + 2)
+        N = 2 ** (logN + 1)
         A = np.random.rand(* [N] * dimens)
         profile = Profile(
             N = N,
@@ -42,7 +42,8 @@ with open(f"profile_{dimens}d.csv", mode="w", newline="") as csvfile, PoolExecut
             eps = eps,
             levels = logN // 2,
             direction = BOTH,
-            subsamples = 10
+            subsamples = 20,
+            as_matrix = True
             )
         tick()
         factor_forest = build_factor_forest(pool, profile)
