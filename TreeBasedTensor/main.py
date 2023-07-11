@@ -1,5 +1,5 @@
+import argparse
 import time
-import sys
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
@@ -20,30 +20,33 @@ def tock():
     global t
     return time.time() - t
 
-dimens = 2 # Number of source or observer dimens, not source + observer dimens
 eps = 1e-6
 
-MPI = len(sys.argv) > 1 and sys.argv[1] == "--mpi"
-PoolExecutor = MPIExecutor if MPI else ProcessPoolExecutor
+parser = argparse.ArgumentParser()
+parser.add_argument("--mpi", action="store_true")
+parser.add_argument("--logN")
+parser.add_argument("--dimens") # Number of source or observer dimens, not source + observer dimens
+parser.add_argument("--asMatrix", action="store_true")
+parser.add_argument("--accuracy", action="store_true")
+args = parser.parse_args()
 
-import csv
-with open(f"profile_{dimens}d.csv", mode="w", newline="") as csvfile, PoolExecutor() as pool:
-    if MPI:
+PoolExecutor = MPIExecutor if args.mpi else ProcessPoolExecutor
+
+with PoolExecutor() as pool:
+    if args.mpi:
         pool.workers_exit()
-    writer = csv.writer(csvfile)
-    writer.writerow(["N", "Time to factor", "Time to compress", "Total size", "Max rank", "Accuracy"])
-    logNs = [6]
-    for logN in tqdm(logNs):
-        N = 2 ** (logN + 1)
-        A = np.random.rand(* [N] * dimens)
+    logNs = [int(args.logN)]
+    for logN in logNs:
+        N = 2 ** (logN + 3)
+        A = np.random.rand(* [N] * int(args.dimens))
         profile = Profile(
             N = N,
-            dimens = dimens,
+            dimens = int(args.dimens),
             eps = eps,
             levels = logN // 2,
             direction = BOTH,
             subsamples = 20,
-            as_matrix = False
+            as_matrix = args.asMatrix
             )
         tick()
         factor_forest = build_factor_forest(pool, profile)
@@ -53,6 +56,8 @@ with open(f"profile_{dimens}d.csv", mode="w", newline="") as csvfile, PoolExecut
         tick()
         compressed_AK = apply(A, profile, factor_forest)
         ttc = tock()
-        accuracy = ss_accuracy(profile, A, compressed_AK)
-        print(accuracy)
-        writer.writerow([N, ttf, ttc, ts, mr, accuracy])
+        if args.accuracy:
+            accuracy = ss_accuracy(profile, A, compressed_AK)
+        else:
+            accuracy = -1
+        print(N, ttf, ttc, ts, mr, accuracy)
