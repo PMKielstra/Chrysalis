@@ -2,6 +2,7 @@ from concurrent.futures import Future, as_completed
 from math import ceil
 from itertools import starmap
 import os
+import time
 
 import numpy as np
 import scipy.linalg.interpolative as interp
@@ -10,37 +11,7 @@ import tensorly
 from utils import czip, subsample
 from multirange import SliceTree, Multirange
 from tensor import K_from_coords
-
-BOTH = 0
-DOWN = 1
-UP = -1
-
-class Profile:
-    """Stores all the parameters necessary for a factorization."""
-
-    def __init__(self, N, dimens, eps, levels, direction=BOTH, subsamples = 20, as_matrix = False, verbose = False, boost_subsamples = True, processes=None):
-        assert N > 0
-        assert dimens > 0
-        assert eps < 1
-        assert direction in (BOTH, UP, DOWN)
-
-        self.N = N ** dimens if as_matrix else N
-        self.true_N = N
-        self.dimens = 1 if as_matrix else dimens
-        self.true_dimens = dimens
-        self.eps = eps
-        self.levels = levels * (dimens if as_matrix else 1)
-        self.direction = direction
-        self.subsamples = subsamples ** (1 if not as_matrix or not boost_subsamples else dimens)
-        self.as_matrix = as_matrix
-        self.verbose = verbose
-        self.processes = processes
-        self.factor_source = 0 # TODO: add the possibility to factor along different axes.
-        self.factor_observer = self.dimens
-        self.off_split_number = 2 ** levels if direction == BOTH else 1
-        
-    def factor_index(self, is_source):
-        return self.factor_source if is_source else self.factor_observer
+from profile import BOTH, UP, DOWN
     
 def ss_row_id(profile, sampled_ranges, is_source):
     """Carries out a subsampled row ID for a tensor, unfolded along factor_index."""
@@ -117,24 +88,30 @@ def one_level_factor(profile, rows_lists, off_cols, passive_multirange, is_sourc
     
     return rows_mats, new_rows
 
-def sequential_factor_to_tree(profile, off_cols, rows_lists_source=None, rows_lists_observer=None, passive_multirange=None, level=None, root=True):
-    """Recursively create a factor tree which goes either down, up, or both.  Decrements level every step and stops when it hits zero, allowing for partial factorizations.  Works sequentially."""
+def print_level(profile, level, start_time):
+    if profile.verbose:
+        print(f"Factored level {level} of {profile.levels} ({time.time() - start_time})", flush=True)
+
+def sequential_factor_to_tree(profile, off_cols, rows_lists_source=None, rows_lists_observer=None, passive_multirange=None, level=0, root=True, far_left=True, start_time=0):
+    """Recursively create a factor tree which goes either down, up, or both.  Works sequentially."""    
     if rows_lists_source is None:
         rows_lists_source = np.array_split(range(profile.N), 2 ** (2 * profile.levels if profile.direction == BOTH else profile.levels))
     if rows_lists_observer is None:
         rows_lists_observer = np.array_split(range(profile.N), 2 ** (2 * profile.levels if profile.direction == BOTH else profile.levels))
     if passive_multirange is None:
         passive_multirange = Multirange([SliceTree(list(range(profile.N))) for _ in range(profile.dimens)], [2 for _ in range(profile.dimens)])
-    if level is None:
-        level = profile.levels
+
+    start_time = time.time()
     
     rows_mats_source, new_rows_source = (None, None) if profile.direction == UP else one_level_factor(profile, rows_lists_source, off_cols, passive_multirange, is_source=True)
     rows_mats_observer, new_rows_observer = (None, None) if profile.direction == DOWN else one_level_factor(profile, rows_lists_observer, off_cols, passive_multirange, is_source=False)
     
     tree = FactorTree(rows_mats_source, rows_mats_observer, passive_multirange, root)
+
+    print_level(profile, level, start_time)
     
-    if level > 0:
-        tree.children = [factor_to_tree(profile, off_cols, new_rows_source, new_rows_observer, next_step, level - 1, False) for next_step in passive_multirange.next_steps()]
+    if level < profile.levels:
+        tree.children = [factor_to_tree(profile, off_cols, new_rows_source, new_rows_observer, next_step, level + 1, root=False, far_left=(far_left and i == 0), start_time=start_time) for i, next_step in enumerate(passive_multirange.next_steps())]
 
     return tree
 
@@ -167,18 +144,21 @@ def parallel_factor_to_tree(pool, profile, off_cols):
     chunksize = max(split_number // os.cpu_count(), 1) # The number of submatrices to factor on one process at one time.  Since we parallelize across all nodes of any tree at the same level, the total number of factorizations that we care about at any given time should remain constant.
     tree = make_async_tree(pool, profile, off_cols, rows_lists_source, rows_lists_observer, passive_multirange, True, chunksize)
     leaves = [tree]
-    for _ in range(profile.levels):
+    for level in range(profile.levels):
+        start_time = time.time()
         new_leaves = []
-        for l in leaves:
-            l.collect()
-            new_rows_source = l.new_rows(True)
-            new_rows_observer = l.new_rows(False)
-            child_multiranges = l.multirange.next_steps()
-            l.children = [make_async_tree(pool, profile, off_cols, new_rows_source, new_rows_observer, cm, False, chunksize) for cm in child_multiranges]
-            new_leaves += l.children
+        for leaf in leaves:
+            leaf.collect()
+            new_rows_source = leaf.new_rows(True)
+            new_rows_observer = leaf.new_rows(False)
+            child_multiranges = leaf.multirange.next_steps()
+            leaf.children = [make_async_tree(pool, profile, off_cols, new_rows_source, new_rows_observer, cm, False, chunksize) for cm in child_multiranges]
+            new_leaves += leaf.children
         leaves = new_leaves
+        print_level(profile, level, start_time)
     for l in leaves:
         l.collect()
+    print_level(profile, profile.levels, start_time)
     return tree
 
 def build_factor_forest(pool, profile):

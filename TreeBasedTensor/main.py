@@ -4,7 +4,8 @@ from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 
-from factor import Profile, build_factor_forest, UP, DOWN, BOTH
+from profile import Profile, BOTH, UP, DOWN
+from factor import build_factor_forest
 from matvec import apply
 from tensor import AK_true
 from profiling import ss_accuracy, total_memory, max_leaf_row_length_forest
@@ -48,16 +49,19 @@ with PoolExecutor() as pool:
             as_matrix = args.asMatrix,
             verbose = args.verbose
             )
+        print(f"N: {N}")
         tick()
         factor_forest = build_factor_forest(pool, profile)
         ttf = tock()
         ts = total_memory(profile, factor_forest)[0]
         mr = max_leaf_row_length_forest(factor_forest)
+        print(f"Time to factor: {ttf}")
+        print(f"Total memory: {ts}")
+        print(f"Max rows at leaf level: {mr}", flush=True)
         tick()
-        compressed_AK = apply(A, profile, factor_forest)
+        compressed_AK = apply(profile, A, factor_forest)
         ttc = tock()
+        print(f"Time to apply: {ttc}", flush=True)
         if args.accuracy:
             accuracy = ss_accuracy(profile, A, compressed_AK)
-        else:
-            accuracy = -1
-        print(N, ttf, ttc, ts, mr, accuracy)
+            print(f"Accuracy: {accuracy}", flush=True)

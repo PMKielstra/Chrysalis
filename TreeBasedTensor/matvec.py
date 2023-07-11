@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sp
 
 from utils import czip, slice_by_index, multilevel_access
-from factor import BOTH, UP, DOWN
+from profile import BOTH, UP, DOWN
 from tensor import AK
 
 def apply_down(split_A, tree):
@@ -36,7 +36,7 @@ def apply_up(get_transposed_split_As, tree):
     split_As = [apply_up(get_transposed_split_As, child) for child in tree.children]
     return np.tensordot(sp.linalg.block_diag(*([rm[1] for rm in tree.rows_mats_up])), sum(split_As), axes=1)
 
-def apply(A, profile, factor_forest):
+def apply(profile, A, factor_forest):
     """Carry out a matrix-tensor product using the factor forest."""
     MSG_APPLYING_DOWN = "Applying down..."
     MSG_APPLYING_UP = "Applying up..."

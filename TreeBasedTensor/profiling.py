@@ -58,7 +58,7 @@ def tensor_memory(profile, factor_forest):
         return block(profile.dimens, [])
 
     elif profile.direction == UP:
-        return leaf_sum(lambda leaf: (off_cols_len ** profile.dimens) * len(leaf.rows_mats_up[0][0]) * (N ** (profile.dimens - 1)), multilevel_access(trees, [0] * (profile.dimens - 1)))
+        return leaf_sum(lambda leaf: (off_cols_len ** profile.dimens) * len(leaf.rows_mats_up[0][0]) * (profile.N ** (profile.dimens - 1)), multilevel_access(trees, [0] * (profile.dimens - 1)))
 
     elif profile.direction == BOTH:
         def size_transposed(col_split_position, up_leaf):
