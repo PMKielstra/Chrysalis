@@ -31,8 +31,8 @@ args = parser.parse_args()
 PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
 
 with PoolExecutor() as pool:
-    if args.mpi:
-        pool.workers_exit()
+##    if args.mpi:
+##        pool.workers_exit()
     logNs = [int(args.logN)]
     for logN in logNs:
         N = 2 ** (logN + 3)

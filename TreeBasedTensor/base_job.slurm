@@ -4,8 +4,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=128
 #SBATCH --constraint=cpu
-#SBATCH --output=2d_%A_%a.out
+#SBATCH --output=out/2d_%A_%a.out
 
 module load python
-source ./venv/bin/activate
+conda activate venv
 srun python3 main.py --logN $SLURM_ARRAY_TASK_ID 
+conda deactivate
