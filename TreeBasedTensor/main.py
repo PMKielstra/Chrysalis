@@ -3,8 +3,6 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
-from tqdm import tqdm
-from mpipool import MPIExecutor
 
 from factor import Profile, build_factor_forest, UP, DOWN, BOTH
 from matvec import apply
@@ -23,14 +21,14 @@ def tock():
 eps = 1e-6
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--mpi", action="store_true")
+#parser.add_argument("--mpi", action="store_true")
 parser.add_argument("--logN")
 parser.add_argument("--dimens") # Number of source or observer dimens, not source + observer dimens
 parser.add_argument("--asMatrix", action="store_true")
 parser.add_argument("--accuracy", action="store_true")
 args = parser.parse_args()
 
-PoolExecutor = MPIExecutor if args.mpi else ProcessPoolExecutor
+PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
 
 with PoolExecutor() as pool:
     if args.mpi:
