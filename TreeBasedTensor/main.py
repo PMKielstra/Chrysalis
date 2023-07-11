@@ -63,7 +63,7 @@ with PoolExecutor() as pool:
             tick()
             compressed_AK = apply(profile, A, factor_forest)
             ttc = tock()
-        print(f"Time to apply: {ttc}", flush=True)
+            print(f"Time to apply: {ttc}", flush=True)
         if args.accuracy:
             accuracy = ss_accuracy(profile, A, compressed_AK)
             print(f"Accuracy: {accuracy}", flush=True)
