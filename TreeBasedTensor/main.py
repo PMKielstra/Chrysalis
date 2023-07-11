@@ -27,6 +27,7 @@ parser.add_argument("--logN")
 parser.add_argument("--dimens") # Number of source or observer dimens, not source + observer dimens
 parser.add_argument("--asMatrix", action="store_true")
 parser.add_argument("--accuracy", action="store_true")
+parser.add_argument("--matvec", action="store_true")
 parser.add_argument("--verbose", action="store_true")
 args = parser.parse_args()
 
@@ -58,9 +59,10 @@ with PoolExecutor() as pool:
         print(f"Time to factor: {ttf}")
         print(f"Total memory: {ts}")
         print(f"Max rows at leaf level: {mr}", flush=True)
-        tick()
-        compressed_AK = apply(profile, A, factor_forest)
-        ttc = tock()
+        if args.matvec:
+            tick()
+            compressed_AK = apply(profile, A, factor_forest)
+            ttc = tock()
         print(f"Time to apply: {ttc}", flush=True)
         if args.accuracy:
             accuracy = ss_accuracy(profile, A, compressed_AK)
