@@ -48,7 +48,8 @@ def apply(A, profile, factor_forest):
 
     # Step 1: Apply A down the factor forest, unless we're only applying up.
     if profile.direction in (BOTH, DOWN):
-        print(MSG_APPLYING_DOWN)
+        if profile.verbose:
+            print(MSG_APPLYING_DOWN)
         def build_transpose_dict(A, trees, i):
             if i == profile.dimens:
                 return apply_down(np.split(A, 2 ** (2 * profile.levels if profile.direction == BOTH else profile.levels)), trees) # At this level, "trees" should in fact be a single tree.
@@ -80,8 +81,9 @@ def apply(A, profile, factor_forest):
             
             up_rows, up_mat = up_leaf.rows_mats_up[0]
             return [np.tensordot(up_mat, AK(profile, slice_by_index(A, down_index), down_index + [up_rows] + [list(range(profile.N))] * (profile.dimens - 1)), axes=1)]
-        
-        print(MSG_APPLYING_UP)
+
+        if profile.verbose:
+            print(MSG_APPLYING_UP)
         split_KA = apply_up(get_KA_leaf, multilevel_access(trees, [0] * (profile.dimens - 1), assert_single_element=True))
         return split_KA
     
@@ -101,8 +103,9 @@ def apply(A, profile, factor_forest):
                 down_rows, down_mat = multilevel_access(transpose_dicts, up_leaf.position[1:])[tuple([w] + col_split_position)][up_leaf.position[0]]
                 split_As.append(np.tensordot(up_mat, AK(profile, down_mat, [down_rows] + down_cols + [up_rows] + up_cols), axes=1))
             return split_As
-        
-        print(MSG_APPLYING_UP)
+
+        if profile.verbose:
+            print(MSG_APPLYING_UP)
 
         def apply_and_join(axis, col_split_position, trees):
             if axis == profile.dimens:

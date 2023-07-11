@@ -18,7 +18,7 @@ UP = -1
 class Profile:
     """Stores all the parameters necessary for a factorization."""
 
-    def __init__(self, N, dimens, eps, levels, direction=BOTH, subsamples = 20, as_matrix = False, boost_subsamples = True, processes=None):
+    def __init__(self, N, dimens, eps, levels, direction=BOTH, subsamples = 20, as_matrix = False, verbose = False, boost_subsamples = True, processes=None):
         assert N > 0
         assert dimens > 0
         assert eps < 1
@@ -33,6 +33,7 @@ class Profile:
         self.direction = direction
         self.subsamples = subsamples ** (1 if not as_matrix or not boost_subsamples else dimens)
         self.as_matrix = as_matrix
+        self.verbose = verbose
         self.processes = processes
         self.factor_source = 0 # TODO: add the possibility to factor along different axes.
         self.factor_observer = self.dimens

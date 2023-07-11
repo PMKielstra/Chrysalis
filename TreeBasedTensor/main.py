@@ -26,6 +26,7 @@ parser.add_argument("--logN")
 parser.add_argument("--dimens") # Number of source or observer dimens, not source + observer dimens
 parser.add_argument("--asMatrix", action="store_true")
 parser.add_argument("--accuracy", action="store_true")
+parser.add_argument("--verbose", action="store_true")
 args = parser.parse_args()
 
 PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
@@ -44,7 +45,8 @@ with PoolExecutor() as pool:
             levels = logN // 2,
             direction = BOTH,
             subsamples = 20,
-            as_matrix = args.asMatrix
+            as_matrix = args.asMatrix,
+            verbose = args.verbose
             )
         tick()
         factor_forest = build_factor_forest(pool, profile)
