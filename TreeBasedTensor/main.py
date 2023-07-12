@@ -39,7 +39,6 @@ with PoolExecutor() as pool:
     logNs = [int(args.logN)]
     for logN in logNs:
         N = 2 ** (logN + 3)
-        A = np.random.rand(* [N] * int(args.dimens))
         profile = Profile(
             N = N,
             dimens = int(args.dimens),
@@ -60,6 +59,7 @@ with PoolExecutor() as pool:
         print(f"Total memory: {ts}")
         print(f"Max rows at leaf level: {mr}", flush=True)
         if args.matvec:
+            A = np.random.rand(* [N] * int(args.dimens))
             tick()
             compressed_AK = apply(profile, A, factor_forest)
             ttc = tock()
