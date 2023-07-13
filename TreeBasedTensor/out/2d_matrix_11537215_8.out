@@ -1,0 +1,7 @@
+N: 2048
+Factored level 0 of 8 (775.3878605365753)
+Factored level 1 of 8 (402.0303146839142)
+Factored level 2 of 8 (172.74011206626892)
+slurmstepd: error: Detected 1 oom_kill event in StepId=11538929.0. Some of the step tasks have been OOM Killed.
+srun: error: nid005864: task 0: Out Of Memory
+srun: Terminating StepId=11538929.0
