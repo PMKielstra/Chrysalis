@@ -53,7 +53,7 @@ def tensor_memory(profile, factor_forest):
     if profile.direction == DOWN:
         def block(dimen, position):
             if dimen == 0:
-                return multilevel_access(transpose_dicts, [0] * (profile.dimens - 1), assert_single_element=True)[tuple(position)][0] * (N ** (profile.dimens - 1)) * (off_cols_len ** profile.dimens)
+                return multilevel_access(transpose_dicts, [0] * (profile.dimens - 1), assert_single_element=True)[tuple(position)][0] * (profile.N ** (profile.dimens - 1)) * (off_cols_len ** profile.dimens)
             return sum(block(dimen - 1, position + [i]) for i in range(2 ** profile.levels))
         return block(profile.dimens, [])
 
