@@ -1,3 +1,5 @@
+from math import floor
+
 BOTH = 0
 UP = -1
 DOWN = 1
@@ -18,7 +20,10 @@ class Profile:
         self.eps = eps
         self.levels = levels * (dimens if as_matrix else 1)
         self.direction = direction
-        self.subsamples = subsamples ** (1 if not as_matrix or not boost_subsamples else dimens)
+        if boost_subsamples:
+            self.subsamples = max(1, floor(subsamples ** (2 / dimens)))
+        else:
+            self.subsamples = subsamples
         self.as_matrix = as_matrix
         self.verbose = verbose
         self.processes = processes
