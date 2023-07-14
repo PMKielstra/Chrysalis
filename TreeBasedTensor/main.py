@@ -43,8 +43,8 @@ with PoolExecutor() as pool:
             N = N,
             dimens = int(args.dimens),
             eps = eps,
-            levels = logN // 2,
-            direction = BOTH,
+            levels = logN,
+            direction = DOWN,
             subsamples = 20,
             as_matrix = args.asMatrix,
             verbose = args.verbose
