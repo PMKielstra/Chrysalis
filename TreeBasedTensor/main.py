@@ -1,6 +1,7 @@
 import argparse
 import time
 from concurrent.futures import ProcessPoolExecutor
+from math import ceil
 
 import numpy as np
 
@@ -45,7 +46,7 @@ with PoolExecutor() as pool:
             N = N,
             dimens = int(args.dimens),
             eps = eps,
-            levels = (logN if args.down else logN // 2),
+            levels = (logN if args.down else ceil(logN / 2)),
             direction = (DOWN if args.down else BOTH),
             subsamples = 20,
             as_matrix = args.asMatrix,
