@@ -25,10 +25,12 @@ parser = argparse.ArgumentParser()
 #parser.add_argument("--mpi", action="store_true")
 parser.add_argument("--logN")
 parser.add_argument("--dimens") # Number of source or observer dimens, not source + observer dimens
+parser.add_argument("--distance", type=float, default=1)
 parser.add_argument("--asMatrix", action="store_true")
 parser.add_argument("--accuracy", action="store_true")
 parser.add_argument("--matvec", action="store_true")
 parser.add_argument("--verbose", action="store_true")
+parser.add_argument("--down", action="store_true")
 args = parser.parse_args()
 
 PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
@@ -43,11 +45,12 @@ with PoolExecutor() as pool:
             N = N,
             dimens = int(args.dimens),
             eps = eps,
-            levels = logN,
-            direction = DOWN,
+            levels = (logN if args.down else logN // 2),
+            direction = (DOWN if args.down else BOTH),
             subsamples = 20,
             as_matrix = args.asMatrix,
-            verbose = args.verbose
+            verbose = args.verbose,
+            distance = args.distance
             )
         print(f"N: {N}")
         tick()

@@ -1,9 +1,0 @@
-N: 512
-Factored level 0 of 6 (0.1897566318511963)
-Factored level 1 of 6 (2.714428663253784)
-Factored level 2 of 6 (6.306528568267822)
-Factored level 3 of 6 (30.96735668182373)
-Factored level 4 of 6 (148.33815670013428)
-Factored level 5 of 6 (790.5786166191101)
-slurmstepd: error: *** STEP 11609436.0 ON nid004359 CANCELLED AT 2023-07-14T17:47:44 DUE TO TIME LIMIT ***
-slurmstepd: error: *** JOB 11609436 ON nid004359 CANCELLED AT 2023-07-14T17:47:44 DUE TO TIME LIMIT ***

@@ -7,7 +7,7 @@ DOWN = 1
 class Profile:
     """Stores all the parameters necessary for a factorization."""
 
-    def __init__(self, N, dimens, eps, levels, direction=BOTH, subsamples = 20, as_matrix = False, verbose = False, boost_subsamples = True, processes=None):
+    def __init__(self, N, dimens, eps, levels, distance=1, direction=BOTH, subsamples = 20, as_matrix = False, verbose = False, boost_subsamples = True, processes=None):
         assert N > 0
         assert dimens > 0
         assert eps < 1
@@ -19,6 +19,7 @@ class Profile:
         self.true_dimens = dimens
         self.eps = eps
         self.levels = levels * (dimens if as_matrix else 1)
+        self.dsquared = distance ** 2
         self.direction = direction
         if boost_subsamples:
             self.subsamples = max(1, floor(subsamples ** (2 / dimens)))

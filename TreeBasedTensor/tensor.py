@@ -18,7 +18,7 @@ def K_from_coords(profile, coords_list):
         halflen = len(coords_list) // 2
         leftstack = np.stack(coords[:halflen], axis=0)
         rightstack = np.stack(coords[halflen:], axis=0)
-    norm = np.sqrt(1 + np.sum(((leftstack - rightstack) / (profile.true_N - 1)) ** 2, axis=0))
+    norm = np.sqrt((profile.dsquared) + np.sum(((leftstack - rightstack) / (profile.true_N - 1)) ** 2, axis=0))
     return np.exp(1j * profile.true_N * np.pi * norm) / norm
 
 def AK(profile, A, coords_list):
