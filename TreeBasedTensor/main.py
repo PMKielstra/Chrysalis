@@ -62,12 +62,12 @@ with PoolExecutor() as pool:
         print(f"Time to factor: {ttf}")
         print(f"Total memory: {ts}")
         print(f"Max rows at leaf level: {mr}", flush=True)
-        if args.matvec:
+        if args.matvec or args.accuracy:
             A = np.random.rand(* [N] * int(args.dimens))
             tick()
             compressed_AK = apply(profile, A, factor_forest)
             ttc = tock()
             print(f"Time to apply: {ttc}", flush=True)
-        if args.accuracy:
-            accuracy = ss_accuracy(profile, A, compressed_AK)
-            print(f"Accuracy: {accuracy}", flush=True)
+            if args.accuracy:
+                accuracy = ss_accuracy(profile, A, compressed_AK)
+                print(f"Accuracy: {accuracy}", flush=True)
