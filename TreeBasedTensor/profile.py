@@ -22,7 +22,7 @@ class Profile:
         self.dsquared = distance ** 2
         self.direction = direction
         if boost_subsamples:
-            self.subsamples = max(1, floor(subsamples ** (2 / dimens)))
+            self.subsamples = max(1, floor(subsamples ** (2 / self.dimens)))
         else:
             self.subsamples = subsamples
         self.as_matrix = as_matrix
