@@ -1,8 +1,10 @@
 from concurrent.futures import Future, as_completed
 from math import ceil
 from itertools import starmap
+from functools import reduce
 import os
 import time
+from copy import deepcopy
 
 import numpy as np
 import scipy.linalg.interpolative as interp
@@ -12,10 +14,24 @@ from utils import czip, subsample
 from multirange import SliceTree, Multirange
 from tensor import K_from_coords
 from profile import BOTH, UP, DOWN
+
+def translate_union(m, n):
+    """Reduce n to one element by increasing the size of m and using translation invariance."""
+    shift = np.max(n) - np.min(n)
+    return reduce(np.union1d, m - i for i in range(shift))
     
 def ss_row_id(profile, sampled_ranges, is_source):
     """Carries out a subsampled row ID for a tensor, unfolded along factor_index."""
     factor_index = profile.factor_index(is_source)
+
+    # Step 0: Use translation invariance if possible
+    if profile.translation_invariant:
+        sampled_ranges = deepcopy(sampled_ranges)
+        for i in range(1, profile.dimens):
+            observer_index = factor_index + i
+            source_index = (observer_index + profile.dimens) % (2 * profile.dimens)
+            sampled_ranges[source_index] = translate_union(sampled_ranges[source_index], sampled_ranges[observer_index])
+            sampled_ranges[observer_index] = sampled_ranges[observer_index][:1]
     
     # Step 1: Subsample
     subsamples = []

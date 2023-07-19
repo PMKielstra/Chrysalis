@@ -32,6 +32,7 @@ parser.add_argument("--accuracy", action="store_true")
 parser.add_argument("--matvec", action="store_true")
 parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--down", action="store_true")
+parser.add_argument("--translationInvariant", action="store_true")
 args = parser.parse_args()
 
 PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
@@ -51,7 +52,8 @@ with PoolExecutor() as pool:
             subsamples = 20,
             as_matrix = args.asMatrix,
             verbose = args.verbose,
-            distance = args.distance
+            distance = args.distance,
+            translation_invariant = args.translationInvariant
             )
         print(f"N: {N}")
         tick()
