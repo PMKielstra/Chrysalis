@@ -18,7 +18,7 @@ from profile import BOTH, UP, DOWN
 def translate_union(m, n):
     """Reduce n to one element by increasing the size of m and using translation invariance."""
     shift = np.max(n) - np.min(n)
-    return reduce(np.union1d, m - i for i in range(shift))
+    return reduce(np.union1d, (np.array(m) - i for i in range(shift)))
     
 def ss_row_id(profile, sampled_ranges, is_source):
     """Carries out a subsampled row ID for a tensor, unfolded along factor_index."""
