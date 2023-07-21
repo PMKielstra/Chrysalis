@@ -15,6 +15,12 @@ from multirange import SliceTree, Multirange
 from tensor import K_from_coords
 from profile import BOTH, UP, DOWN
 
+class FakeMatrix:
+    """Has a shape but doesn't store any actual data.  Used when profiling factorizations to save on actual memory."""
+    def __init__(self, M):
+        self.shape = M.shape
+        self.size = M.size
+
 def translate_union(m, n):
     """Reduce n to one element by increasing the size of m and using translation invariance."""
     shift = np.max(n) - np.min(n)
@@ -52,7 +58,7 @@ def ss_row_id(profile, sampled_ranges, is_source):
     # Step 4: Map the rows chosen by the ID, which are a subset of [1, ..., len(multirange[factor_index])], back to a subset of the relevant actual rows
     old_rows = sampled_ranges[factor_index]
     new_rows = old_rows[idx[:k]]
-    return new_rows, R.T
+    return new_rows, (FakeMatrix(R.T) if profile.use_fake else R.T)
 
 class FactorTree:
     """A tree that holds a single factorization dimension, up, down, or both."""

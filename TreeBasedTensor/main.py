@@ -49,11 +49,12 @@ with PoolExecutor() as pool:
             eps = eps,
             levels = (logN if args.down else ceil(logN / 2)),
             direction = (DOWN if args.down else BOTH),
-            subsamples = 20,
+            subsamples = 30,
             as_matrix = args.asMatrix,
             verbose = args.verbose,
             distance = args.distance,
-            translation_invariant = args.translationInvariant
+            translation_invariant = args.translationInvariant,
+            use_fake = not (args.matvec or args.accuracy)
             )
         print(f"N: {N}")
         tick()
