@@ -1,0 +1,3 @@
+N: 512
+slurmstepd: error: *** STEP 12051174.0 ON nid005003 CANCELLED AT 2023-07-21T18:40:23 ***
+slurmstepd: error: *** JOB 12051174 ON nid005003 CANCELLED AT 2023-07-21T18:40:23 ***
