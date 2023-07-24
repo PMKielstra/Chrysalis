@@ -1,0 +1,4 @@
+N: 128
+Factored level 0 of 6 (335.46487402915955)
+slurmstepd: error: *** STEP 12050831.0 ON nid004767 CANCELLED AT 2023-07-21T18:06:34 ***
+slurmstepd: error: *** JOB 12050831 ON nid004767 CANCELLED AT 2023-07-21T18:06:34 ***
