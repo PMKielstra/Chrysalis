@@ -1,3 +1,3 @@
-N,Total memory (hybrid),Time to factor (hybrid),Rows at leaf level (hybrid)
-32,8291185353,3.0529613494873,13
-128,1946444659996,489.865348100662,13
+N,Total memory (hybrid),Total memory (hybrid translation invariant),Time to factor (hybrid),Time to factor (hybrid translation invariant),Rows at leaf level (hybrid),Rows at leaf level (hybrid translation invariant)
+32,8291185353,10593870272,3.0529613494873,22.7558205127716,13,13
+128,1946444659996,2775285832049,489.865348100662,10721.0940566063,13,14
