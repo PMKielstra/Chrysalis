@@ -48,7 +48,8 @@ def tensor_memory(profile, factor_forest):
         return [build_transpose_dict(tree, i + 1) for tree in trees]
 
     transpose_dicts = build_transpose_dict(trees, 1)
-    off_cols_len = len(off_cols_lists[0]) // 2 ** profile.levels
+    off_cols_len = len(off_cols_lists[0]) // (1 if profile.direction == BOTH else 2 ** profile.levels)
+    
 
     if profile.direction == DOWN:
         def block(dimen, position):
