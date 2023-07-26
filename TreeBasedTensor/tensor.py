@@ -12,6 +12,8 @@ def mod_stack(profile, coords):
 
 def K_from_coords(profile, coords_list):
     """Get a subtensor of K."""
+    coords_list[0], coords_list[profile.axis_roll] = coords_list[profile.axis_roll], coords_list[0]
+    coords_list[profile.dimens], coords_list[profile.dimens + profile.axis_roll] = coords_list[profile.dimens + profile.axis_roll], coords_list[profile.dimens]
     if profile.as_matrix:
         assert len(coords_list) == 2
         x, y = np.meshgrid(range(len(coords_list[0])), range(len(coords_list[1])), indexing='ij')
@@ -22,6 +24,8 @@ def K_from_coords(profile, coords_list):
         leftstack = np.stack(coords[:halflen], axis=0)
         rightstack = np.stack(coords[halflen:], axis=0)
     norm = np.sqrt((profile.dsquared) + np.sum(((leftstack - rightstack) / (profile.true_N - 1)) ** 2, axis=0))
+    norm = np.swapaxes(norm, 0, profile.axis_roll)
+    norm = np.swapaxes(norm, profile.dimens, profile.dimens + profile.axis_roll)
     return np.exp(-1j * profile.true_N * np.pi * norm) / norm
 
 def AK(profile, A, coords_list):

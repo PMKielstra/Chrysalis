@@ -34,9 +34,8 @@ class Profile:
         self.use_fake = use_fake
         self.verbose = verbose
         self.processes = processes
-        self.factor_source = 0 # TODO: add the possibility to factor along different axes.
-        self.factor_observer = self.dimens
+        self.axis_roll = 0
         self.off_split_number = 2 ** levels if direction == BOTH else 1
         
     def factor_index(self, is_source):
-        return self.factor_source if is_source else self.factor_observer
+        return 0 if is_source else self.dimens
