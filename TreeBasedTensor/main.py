@@ -10,7 +10,7 @@ from profile import Profile, BOTH, UP, DOWN
 from factor import build_factor_forest
 from multiwaymatvec import apply
 from tensor import AK_true
-from profiling import ss_accuracy, total_memory, max_leaf_row_length_forest
+from profiling import ss_accuracy, total_memory, max_leaf_row_length_forests
 
 t = 0
 def tick():
@@ -65,11 +65,11 @@ with PoolExecutor() as pool:
             factor_forests.append(build_factor_forest(pool, profile))
         profile.set_axis_roll(0)
         ttf = tock()
-##        ts = total_memory(profile, factor_forest)[0]
-##        mr = max_leaf_row_length_forest(factor_forest)
+        ts = total_memory(profile, factor_forests)[0]
+        mr = max_leaf_row_length_forests(factor_forests)
         print(f"Time to factor: {ttf}")
-##        print(f"Total memory: {ts}")
-##        print(f"Max rows at leaf level: {mr}", flush=True)
+        print(f"Total memory: {ts}")
+        print(f"Max rows at leaf level: {mr}", flush=True)
         if args.matvec or args.accuracy:
             A = np.random.rand(* [N] * int(args.dimens))
             tick()

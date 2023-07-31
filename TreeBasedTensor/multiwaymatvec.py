@@ -90,7 +90,6 @@ def apply(profile, A, factor_forests):
         cols_list = np.array_split(range(profile.N), split)
         def block(position, up_slice):
             if len(position) == profile.dimens:
-                print([len(r) for r in up_slice])
                 return matrix_at(position, up_slice)
             return [block(position + [i], up_slice + [cols]) for i, cols in enumerate(cols_list)]
         return np.block(block([], []))
