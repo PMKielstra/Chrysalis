@@ -34,4 +34,4 @@ def AK(profile, A, coords_list):
 
 def AK_true(profile, A):
     """Wrapper for AK which uses the full coords list."""
-    return AK(A, N, [list(range(N))] * (A.ndim * 2))
+    return AK(profile, A, [list(range(profile.N))] * (A.ndim * 2))

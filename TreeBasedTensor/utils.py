@@ -1,6 +1,18 @@
 import numpy as np
 import random
 
+def tensorprod(A, K, axis, verbose=False):
+    if verbose:
+        print(A.shape, K.shape)
+    K = np.tensordot(A, K, axes=(1, axis))
+    for i in range(axis):
+        K = np.swapaxes(K, i, i + 1)
+    return K
+
+def without(l, i):
+    """All of l except for l[i]"""
+    return [ll for j, ll in enumerate(l) if j != i]
+
 def czip(*ls):
     """Zip, but assert that all lists involved have the same length."""
     for l in ls:

@@ -10,7 +10,7 @@ import numpy as np
 import scipy.linalg.interpolative as interp
 import tensorly
 
-from utils import czip, subsample
+from utils import czip, subsample, tensorprod
 from multirange import SliceTree, Multirange
 from tensor import K_from_coords
 from profile import BOTH, UP, DOWN
@@ -26,7 +26,7 @@ def translate_union(m, n):
     shift = np.max(n) - np.min(n)
     return reduce(np.union1d, (np.array(m) - i for i in range(shift)))
     
-def ss_row_id(profile, sampled_ranges, is_source):
+def ss_row_id(profile, sampled_ranges, is_source):    
     """Carries out a subsampled row ID for a tensor, unfolded along factor_index."""
     factor_index = profile.factor_index(is_source)
 
@@ -58,6 +58,7 @@ def ss_row_id(profile, sampled_ranges, is_source):
     # Step 4: Map the rows chosen by the ID, which are a subset of [1, ..., len(multirange[factor_index])], back to a subset of the relevant actual rows
     old_rows = sampled_ranges[factor_index]
     new_rows = old_rows[idx[:k]]
+    
     return new_rows, (FakeMatrix(R.T) if profile.use_fake else R.T)
 
 class FactorTree:
@@ -195,4 +196,4 @@ def build_factor_forest(pool, profile):
             return parallel_factor_to_tree(pool, profile, previous_off_cols)
         return [make_trees(previous_off_cols + [off_cols], level - 1) for off_cols in off_cols_lists]
 
-    return off_cols_lists, make_trees([], profile.dimens - 1)
+    return make_trees([], profile.dimens - 1)

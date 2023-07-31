@@ -39,3 +39,6 @@ class Profile:
         
     def factor_index(self, is_source):
         return 0 if is_source else self.dimens
+
+    def set_axis_roll(self, axis_roll):
+        self.axis_roll = axis_roll

@@ -4,10 +4,11 @@ from concurrent.futures import ProcessPoolExecutor
 from math import ceil
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 from profile import Profile, BOTH, UP, DOWN
 from factor import build_factor_forest
-from matvec import apply
+from multiwaymatvec import apply
 from tensor import AK_true
 from profiling import ss_accuracy, total_memory, max_leaf_row_length_forest
 
@@ -42,7 +43,7 @@ with PoolExecutor() as pool:
 ##        pool.workers_exit()
     logNs = [int(args.logN)]
     for logN in logNs:
-        N = 2 ** (logN + 3)
+        N = 2 ** (logN + 2)
         profile = Profile(
             N = N,
             dimens = int(args.dimens),
@@ -58,17 +59,28 @@ with PoolExecutor() as pool:
             )
         print(f"N: {N}")
         tick()
-        factor_forest = build_factor_forest(pool, profile)
+        factor_forests = []
+        for axis in range(profile.dimens):
+            profile.set_axis_roll(axis)
+            factor_forests.append(build_factor_forest(pool, profile))
+        profile.set_axis_roll(0)
         ttf = tock()
-        ts = total_memory(profile, factor_forest)[0]
-        mr = max_leaf_row_length_forest(factor_forest)
+##        ts = total_memory(profile, factor_forest)[0]
+##        mr = max_leaf_row_length_forest(factor_forest)
         print(f"Time to factor: {ttf}")
-        print(f"Total memory: {ts}")
-        print(f"Max rows at leaf level: {mr}", flush=True)
+##        print(f"Total memory: {ts}")
+##        print(f"Max rows at leaf level: {mr}", flush=True)
         if args.matvec or args.accuracy:
             A = np.random.rand(* [N] * int(args.dimens))
             tick()
-            compressed_AK = apply(profile, A, factor_forest)
+            compressed_AK = apply(profile, A, factor_forests)
+            true_AK = AK_true(profile, A)
+            print(compressed_AK)
+            print("---")
+            print(true_AK)
+            print("---")
+            plt.matshow(np.real(compressed_AK - true_AK))
+            plt.show()
             ttc = tock()
             print(f"Time to apply: {ttc}", flush=True)
             if args.accuracy:
