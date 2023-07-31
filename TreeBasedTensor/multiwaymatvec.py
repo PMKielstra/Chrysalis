@@ -37,6 +37,9 @@ def forest_child_at(forest, child_position, axis, dimens):
         return [forest_child_at(f, child_position, axis, dimens) for f in forest]
     return forest.children[binary_swap_axes(child_position, axis, dimens)]
 
+def forest_children(profile, factor_forests):
+    return [[forest_child_at(factor_forest, c, axis, profile.dimens) for axis, factor_forest in enumerate(factor_forests)] for c in range(2 ** profile.dimens)]
+
 def apply_down(profile, A_grid, factor_forests, level):
     test_tree = multilevel_access(factor_forests[0], [0] * (profile.dimens - 1))
     if not test_tree.root:
@@ -49,8 +52,7 @@ def apply_down(profile, A_grid, factor_forests, level):
         return {test_tree.position: ([make_grid(profile, forest, axis, 2 ** level, rows_grid=True) for axis, forest in enumerate(factor_forests)], deepcopy(A_grid))}
 
     base_dict = {}
-    children = [[forest_child_at(factor_forest, c, axis, profile.dimens) for axis, factor_forest in enumerate(factor_forests)] for c in range(2 ** profile.dimens)]
-    for c in children:
+    for c in forest_children(profile, factor_forests):
         base_dict.update(apply_down(profile, deepcopy(A_grid), c, level - 1))
     return base_dict
 
@@ -59,7 +61,7 @@ def apply_up(profile, get_leaf_grid, factor_forests, level):
     if test_tree.children == []:
         leaf = get_leaf_grid(test_tree.position)
     else:
-        children = [[forest_child_at(factor_forests, c, axis, profile.dimens) for axis, factor_forest in enumerate(factor_forests)] for c in range(2 ** profile.dimens)]
+        children = forest_children(profile, factor_forests)
         downward_leaves = [apply_up(profile, get_leaf_grid, child, level + 1) for child in children]
         leaf = sum(downward_leaves[1:], start=downward_leaves[0])
 

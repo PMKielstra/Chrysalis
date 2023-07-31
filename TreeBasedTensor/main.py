@@ -43,7 +43,7 @@ with PoolExecutor() as pool:
 ##        pool.workers_exit()
     logNs = [int(args.logN)]
     for logN in logNs:
-        N = 2 ** (logN + 2)
+        N = 2 ** (logN + 3)
         profile = Profile(
             N = N,
             dimens = int(args.dimens),
@@ -74,15 +74,9 @@ with PoolExecutor() as pool:
             A = np.random.rand(* [N] * int(args.dimens))
             tick()
             compressed_AK = apply(profile, A, factor_forests)
-            true_AK = AK_true(profile, A)
-            print(compressed_AK)
-            print("---")
-            print(true_AK)
-            print("---")
-            plt.matshow(np.real(compressed_AK - true_AK))
-            plt.show()
             ttc = tock()
             print(f"Time to apply: {ttc}", flush=True)
             if args.accuracy:
+                true_AK = AK_true(profile, A)
                 accuracy = ss_accuracy(profile, A, compressed_AK)
                 print(f"Accuracy: {accuracy}", flush=True)
