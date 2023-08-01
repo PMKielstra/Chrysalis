@@ -1,6 +1,6 @@
-N,Total memory (hybrid),Total memory (downward),Total memory (hybrid translation invariant),Total memory (matrix),Time to factor (hybrid),Time to factor (downward),Time to factor (hybrid translation invariant),Time to factor (matrix),Rows at leaf level (hybrid),Rows at leaf level (downward),Rows at leaf level (hybrid translation invariant),Rows at leaf level (matrix)
-32,36124112,506515386,40299264,473515297,1.2461314201355,1.12118291854858,0.598212718963623,109.141158342361,13,16,13,1073
-64,,18730240896,,,,5.97226929664612,,,,20,,
-128,2236194154,724186458952,2672658110,64460428697,32.3133647441864,51.9781544208527,13.4340710639954,22140.5621128082,13,26,14,1204
-256,,29687796745210,,,,530.009940862656,,,,36,,
-512,136939286692,1302850276324344,165787955425,,2114.41135311127,5888.96991372109,1045.97531962395,,14,55,14,
+N,Total memory (hybrid),Total memory (hybrid translation invariant),Total memory (matrix),Time to factor (hybrid),Time to factor (hybrid translation invariant),Time to factor (matrix),Rows at leaf level (hybrid),Rows at leaf level (hybrid translation invariant),Rows at leaf level (matrix)
+32,192870577,230350780,473515297,8.66227555274963,2.43076205253601,109.141158342361,13,13,1073
+64,,,,,,,,,
+128,11364200744,17611771108,64460428697,465.431782007217,193.030802249908,22140.5621128082,14,14,1204
+256,,,,,,,,,
+512,,,,,,,,,
