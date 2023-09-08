@@ -4,7 +4,7 @@ import numpy as np
 import scipy as sp
 
 from utils import without, czip, slice_by_index, multilevel_access
-from profile import BOTH, UP, DOWN
+from factorprofile import BOTH, UP, DOWN
 from tensor import AK
 from tensorgrid import TensorGrid
 

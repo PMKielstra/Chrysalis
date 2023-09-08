@@ -13,7 +13,7 @@ import tensorly
 from utils import czip, subsample, tensorprod
 from multirange import SliceTree, Multirange
 from tensor import K_from_coords
-from profile import BOTH, UP, DOWN
+from factorprofile import BOTH, UP, DOWN
 
 class FakeMatrix:
     """Has a shape but doesn't store any actual data.  Used when profiling factorizations to save on actual memory."""

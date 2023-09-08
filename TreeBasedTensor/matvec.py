@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sp
 
 from utils import czip, slice_by_index, multilevel_access
-from profile import BOTH, UP, DOWN
+from factorprofile import BOTH, UP, DOWN
 from tensor import AK
 
 def apply_down(split_A, tree):

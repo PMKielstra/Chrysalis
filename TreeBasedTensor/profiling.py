@@ -1,4 +1,5 @@
 import itertools
+import functools
 
 import numpy as np
 
@@ -99,4 +100,16 @@ def max_leaf_row_length(tree):
 def max_leaf_row_length_forests(factor_forests):
     """Determine the maximum length of the list of rows (aka the maximum rank) at any leaf of any tree in a set of forests."""
     return factor_forests_fold(max_leaf_row_length, factor_forests, max)
-                   
+
+def evaluate_top_translation_invariance(profile, factor_forests, dimen=0):
+    test_tree = multilevel_access(factor_forests[0], [0] * (profile.dimens - 1))
+    def top_leaf_rows(tree):
+        if tree.children == []:
+            return [rows for rows, mats in tree.rows_mats_down]
+        return top_leaf_rows(tree.children[0])
+    test_rows = top_leaf_rows(test_tree)
+    offset = profile.N // (2 ** profile.levels)
+    offset_test_rows = [np.array(row) - i * offset for i, row in enumerate(test_rows)]
+    print(sum(len(l) for l in offset_test_rows))
+    print(functools.reduce(np.union1d, offset_test_rows))
+    return len(functools.reduce(np.union1d, offset_test_rows))

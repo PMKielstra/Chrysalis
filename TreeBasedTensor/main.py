@@ -6,11 +6,11 @@ from math import ceil
 import numpy as np
 from matplotlib import pyplot as plt
 
-from profile import Profile, BOTH, UP, DOWN
+from factorprofile import Profile, BOTH, UP, DOWN
 from factor import build_factor_forest
 from multiwaymatvec import apply
 from tensor import AK_true
-from profiling import ss_accuracy, total_memory, max_leaf_row_length_forests
+from profiling import ss_accuracy, total_memory, max_leaf_row_length_forests, evaluate_top_translation_invariance
 
 t = 0
 def tick():
@@ -67,8 +67,10 @@ with PoolExecutor() as pool:
         ttf = tock()
         ts = total_memory(profile, factor_forests)[0]
         mr = max_leaf_row_length_forests(factor_forests)
+        tti = evaluate_top_translation_invariance(profile, factor_forests)
         print(f"Time to factor: {ttf}")
         print(f"Total memory: {ts}")
+        print(f"Top translation invariance: {tti}")
         print(f"Max rows at leaf level: {mr}", flush=True)
         if args.matvec or args.accuracy:
             A = np.random.rand(* [N] * int(args.dimens))
