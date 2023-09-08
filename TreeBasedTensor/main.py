@@ -60,6 +60,9 @@ with PoolExecutor() as pool:
             flat = args.flat
             )
         print(f"N: {N}")
+        if flat:
+            print("Flat")
+        print(f"Distance: {args.distance}")
         tick()
         factor_forests = []
         for axis in range(profile.dimens):
