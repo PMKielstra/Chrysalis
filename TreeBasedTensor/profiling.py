@@ -110,6 +110,4 @@ def evaluate_top_translation_invariance(profile, factor_forests, dimen=0):
     test_rows = top_leaf_rows(test_tree)
     offset = profile.N // (2 ** profile.levels)
     offset_test_rows = [np.array(row) - i * offset for i, row in enumerate(test_rows)]
-    print(sum(len(l) for l in offset_test_rows))
-    print(functools.reduce(np.union1d, offset_test_rows))
     return len(functools.reduce(np.union1d, offset_test_rows))

@@ -34,6 +34,7 @@ parser.add_argument("--matvec", action="store_true")
 parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--down", action="store_true")
 parser.add_argument("--translationInvariant", action="store_true")
+parser.add_argument("--flat", action="store_true")
 args = parser.parse_args()
 
 PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
@@ -55,7 +56,8 @@ with PoolExecutor() as pool:
             verbose = args.verbose,
             distance = args.distance,
             translation_invariant = args.translationInvariant,
-            use_fake = not (args.matvec or args.accuracy)
+            use_fake = not (args.matvec or args.accuracy),
+            flat = args.flat
             )
         print(f"N: {N}")
         tick()

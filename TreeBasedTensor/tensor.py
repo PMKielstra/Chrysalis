@@ -23,7 +23,9 @@ def K_from_coords(profile, coords_list):
         halflen = len(coords_list) // 2
         leftstack = np.stack(coords[:halflen], axis=0)
         rightstack = np.stack(coords[halflen:], axis=0)
-    norm = np.sqrt((profile.dsquared) + np.sum(((leftstack - rightstack) / (profile.true_N - 1)) ** 2, axis=0))
+    if profile.flat:
+        rightstack += (profile.true_N - 1) * (1 + profile.distance)
+    norm = np.sqrt((0 if profile.flat else profile.dsquared) + np.sum(((leftstack - rightstack) / (profile.true_N - 1)) ** 2, axis=0))
     norm = np.swapaxes(norm, 0, profile.axis_roll)
     norm = np.swapaxes(norm, profile.dimens, profile.dimens + profile.axis_roll)
     return np.exp(-1j * profile.true_N * np.pi * norm) / norm
