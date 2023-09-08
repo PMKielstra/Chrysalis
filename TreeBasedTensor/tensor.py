@@ -21,8 +21,8 @@ def K_from_coords(profile, coords_list):
     else:
         coords = np.meshgrid(*coords_list, indexing='ij')
         halflen = len(coords_list) // 2
-        leftstack = np.stack(coords[:halflen], axis=0)
-        rightstack = np.stack(coords[halflen:], axis=0)
+        leftstack = np.float64(np.stack(coords[:halflen], axis=0))
+        rightstack = np.float64(np.stack(coords[halflen:], axis=0))
     if profile.flat:
         rightstack += (profile.true_N - 1) * (1 + profile.distance)
     norm = np.sqrt((0 if profile.flat else profile.dsquared) + np.sum(((leftstack - rightstack) / (profile.true_N - 1)) ** 2, axis=0))
