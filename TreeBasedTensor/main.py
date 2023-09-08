@@ -60,7 +60,7 @@ with PoolExecutor() as pool:
             flat = args.flat
             )
         print(f"N: {N}")
-        if flat:
+        if args.flat:
             print("Flat")
         print(f"Distance: {args.distance}")
         tick()

@@ -8,7 +8,7 @@ def mod_stack(profile, coords):
     assert max(np.ravel(coords)) == 0
     split_stacks = [stack[i::profile.true_dimens] for i in range(profile.true_dimens)]
     split_pos = [sum((2 ** i) * x for i, x in enumerate(s)) for s in split_stacks]
-    return np.stack(split_pos, axis=0)
+    return np.float64(np.stack(split_pos, axis=0))
 
 def K_from_coords(profile, coords_list):
     """Get a subtensor of K."""
