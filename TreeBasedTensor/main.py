@@ -78,7 +78,7 @@ with PoolExecutor() as pool:
         print(f"Top translation invariance: {tti}")
         print(f"Max rows at leaf level: {mr}", flush=True)
         if args.matvec or args.accuracy:
-            A = np.random.rand(* [N] * int(args.dimens))
+            A = np.random.rand(* [profile.N] * profile.dimens)
             tick()
             compressed_AK = apply(profile, A, factor_forests)
             ttc = tock()
