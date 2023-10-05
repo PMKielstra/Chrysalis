@@ -4,7 +4,6 @@ from concurrent.futures import ProcessPoolExecutor
 from math import ceil
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from factorprofile import Profile, BOTH, UP, DOWN
 from factor import build_factor_forest
@@ -35,6 +34,7 @@ parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--down", action="store_true")
 parser.add_argument("--translationInvariant", action="store_true")
 parser.add_argument("--flat", action="store_true")
+parser.add_argument("--largeLeaf", action="store_true")
 args = parser.parse_args()
 
 PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
@@ -44,7 +44,7 @@ with PoolExecutor() as pool:
 ##        pool.workers_exit()
     logNs = [int(args.logN)]
     for logN in logNs:
-        N = 2 ** (logN + 3)
+        N = (2 ** (logN + 4)) if args.largeLeaf else (2 ** (logN + 3))
         profile = Profile(
             N = N,
             dimens = int(args.dimens),
