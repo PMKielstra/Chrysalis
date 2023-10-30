@@ -30,7 +30,7 @@ def K_from_coords(profile, coords_list):
     norm = np.swapaxes(norm, profile.dimens, profile.dimens + profile.axis_roll)
 
     if profile.kill_trans_inv:
-        kti = 1 - 0.001 * np.cos(np.sum(leftstack, axis=0))
+        kti = 1 - 0.00001 * np.cos(np.sum(leftstack, axis=0))
         kti = np.swapaxes(kti, 0, profile.axis_roll)
         kti = np.swapaxes(kti, profile.dimens, profile.dimens + profile.axis_roll)
     else:
