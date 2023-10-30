@@ -28,7 +28,15 @@ def K_from_coords(profile, coords_list):
     norm = np.sqrt((0 if profile.flat else profile.dsquared) + np.sum(((leftstack - rightstack) / (profile.true_N - 1)) ** 2, axis=0))
     norm = np.swapaxes(norm, 0, profile.axis_roll)
     norm = np.swapaxes(norm, profile.dimens, profile.dimens + profile.axis_roll)
-    return np.exp(-1j * profile.true_N * np.pi * norm) / norm
+
+    if profile.kill_trans_inv:
+        kti = 1 - 0.001 * np.cos(np.sum(leftstack, axis=0))
+        kti = np.swapaxes(kti, 0, profile.axis_roll)
+        kti = np.swapaxes(kti, profile.dimens, profile.dimens + profile.axis_roll)
+    else:
+        kti = 1
+    
+    return np.exp(-1j * profile.true_N * np.pi * norm * kti) / norm
 
 def AK(profile, A, coords_list):
     """Carry out tensor compression along the axes of A and the first axes of the subtensor of K given by coords_list."""

@@ -7,7 +7,7 @@ DOWN = 1
 class Profile:
     """Stores all the parameters necessary for a factorization."""
 
-    def __init__(self, N, dimens, eps, levels, distance=1, direction=BOTH, subsamples = 20, translation_invariant=False, flat=False, as_matrix = False, use_fake = False, verbose = False, boost_subsamples = True, processes=None):
+    def __init__(self, N, dimens, eps, levels, distance=1, direction=BOTH, subsamples = 20, translation_invariant=False, flat=False, as_matrix = False, use_fake = False, verbose = False, boost_subsamples = True, processes=None, kill_trans_inv=False):
         assert N > 0
         assert dimens > 0
         assert eps < 1
@@ -38,6 +38,8 @@ class Profile:
         self.processes = processes
         self.axis_roll = 0
         self.off_split_number = 2 ** levels if direction == BOTH else 1
+
+        self.kill_trans_inv = kill_trans_inv
         
     def factor_index(self, is_source):
         return 0 if is_source else self.dimens

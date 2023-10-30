@@ -3,7 +3,7 @@ import functools
 
 import numpy as np
 
-from tensor import AK
+from tensor import AK, K_from_coords
 from utils import subsample, slice_by_index, multilevel_access, multilevel_flatten, multilevel_enumerate
 from factor import UP, DOWN, BOTH
 from multiwaymatvec import make_grid, forest_children
@@ -111,3 +111,31 @@ def evaluate_top_translation_invariance(profile, factor_forests, dimen=0):
     offset = profile.N // (2 ** profile.levels)
     offset_test_rows = [np.array(row) - i * offset for i, row in enumerate(test_rows)]
     return len(functools.reduce(np.union1d, offset_test_rows))
+
+def translation_invariant_matvec_rank(profile, factor_forests):
+    trees_list = factor_forests
+    for _ in range(profile.dimens - 1):
+        trees_list = sum(trees_list, []) # Flatten
+
+    offset = profile.N // (2 ** profile.levels)
+    print(offset)
+    def bring_to_zero(elts):
+        elts = np.array(elts)
+        while min(elts) >= offset:
+            elts -= offset
+        return elts
+
+    def union(l):
+        return functools.reduce(np.union1d, l)
+
+    def offset_unions(trees):
+        if trees[0].children == []:
+            rows_list = [[bring_to_zero(r) for r, e in t.rows_mats_down] + [bring_to_zero(r) for r, e in t.rows_mats_up] for t in trees]
+
+            return [union([r[i] for r in rows_list]) for i in range(len(rows_list[0]))]            
+        child_results = [offset_unions([t.children[i] for t in trees]) for i in range(len(trees[0].children))]
+        return [union([c[i] for c in child_results]) for i in range(len(child_results[0]))]
+
+    return 0
+
+

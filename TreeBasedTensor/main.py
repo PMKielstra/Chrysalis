@@ -9,7 +9,8 @@ from factorprofile import Profile, BOTH, UP, DOWN
 from factor import build_factor_forest
 from multiwaymatvec import apply
 from tensor import AK_true
-from profiling import ss_accuracy, total_memory, max_leaf_row_length_forests, evaluate_top_translation_invariance
+from profiling import *
+from compresscenter import compressed_core_rank
 
 t = 0
 def tick():
@@ -27,6 +28,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--logN")
 parser.add_argument("--dimens") # Number of source or observer dimens, not source + observer dimens
 parser.add_argument("--distance", type=float, default=1)
+parser.add_argument("--eps", type=float, default=eps)
 parser.add_argument("--asMatrix", action="store_true")
 parser.add_argument("--accuracy", action="store_true")
 parser.add_argument("--matvec", action="store_true")
@@ -35,6 +37,7 @@ parser.add_argument("--down", action="store_true")
 parser.add_argument("--translationInvariant", action="store_true")
 parser.add_argument("--flat", action="store_true")
 parser.add_argument("--largeLeaf", action="store_true")
+parser.add_argument("--kti", action="store_true")
 args = parser.parse_args()
 
 PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
@@ -44,11 +47,11 @@ with PoolExecutor() as pool:
 ##        pool.workers_exit()
     logNs = [int(args.logN)]
     for logN in logNs:
-        N = (2 ** (logN + 4)) if args.largeLeaf else (2 ** (logN + 3))
+        N = (2 ** (logN + 9)) if args.largeLeaf else (2 ** (logN + 3))
         profile = Profile(
             N = N,
             dimens = int(args.dimens),
-            eps = eps,
+            eps = args.eps,
             levels = (logN if args.down else ceil(logN / 2)),
             direction = (DOWN if args.down else BOTH),
             subsamples = 30,
@@ -57,7 +60,8 @@ with PoolExecutor() as pool:
             distance = args.distance,
             translation_invariant = args.translationInvariant,
             use_fake = not (args.matvec or args.accuracy),
-            flat = args.flat
+            flat = args.flat,
+            kill_trans_inv = args.kti
             )
         print(f"N: {N}")
         if args.flat:
@@ -73,10 +77,12 @@ with PoolExecutor() as pool:
         ts = total_memory(profile, factor_forests)[0]
         mr = max_leaf_row_length_forests(factor_forests)
         tti = evaluate_top_translation_invariance(profile, factor_forests)
+        ccr = compressed_core_rank(profile, factor_forests)
         print(f"Time to factor: {ttf}")
         print(f"Total memory: {ts}")
         print(f"Top translation invariance: {tti}")
-        print(f"Max rows at leaf level: {mr}", flush=True)
+        print(f"Max rows at leaf level: {mr}")
+        print(f"Compressed core: {ccr}", flush=True)
         if args.matvec or args.accuracy:
             A = np.random.rand(* [profile.N] * profile.dimens)
             tick()
