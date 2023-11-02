@@ -38,6 +38,7 @@ parser.add_argument("--translationInvariant", action="store_true")
 parser.add_argument("--flat", action="store_true")
 parser.add_argument("--largeLeaf", action="store_true")
 parser.add_argument("--kti", action="store_true")
+parser.add_argument("--fourier", action="store_true")
 args = parser.parse_args()
 
 PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
@@ -61,7 +62,8 @@ with PoolExecutor() as pool:
             translation_invariant = args.translationInvariant,
             use_fake = not (args.matvec or args.accuracy),
             flat = args.flat,
-            kill_trans_inv = args.kti
+            kill_trans_inv = args.kti,
+            fourier = args.fourier
             )
         print(f"N: {N}")
         if args.flat:
