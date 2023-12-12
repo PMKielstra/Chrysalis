@@ -1,8 +1,11 @@
+from math import floor, log2
+
 import numpy as np
 
 def mod_stack(profile, coords):
     stack = [np.mod(coords, 2)]
-    for _ in range(profile.true_dimens * (profile.levels + 3)):
+    logN = floor(log2(profile.N))
+    for _ in range(logN):
         coords = (coords - stack[-1]) // 2
         stack.append(np.mod(coords, 2))
     assert max(np.ravel(coords)) == 0
@@ -25,14 +28,14 @@ def K_from_coords_green(profile, leftstack, rightstack):
     else:
         kti = 1
     
-    return np.exp(-1j * profile.true_N * np.pi * norm * kti) / norm
+    return (np.exp(-1j * profile.true_N * np.pi * norm * kti) / norm)
 
 def K_from_coords_fourier(profile, leftstack, rightstack):
     dot_prod = np.sum(leftstack * rightstack, axis=0)
     dot_prod = np.swapaxes(dot_prod, 0, profile.axis_roll)
     dot_prod = np.swapaxes(dot_prod, profile.dimens, profile.dimens + profile.axis_roll)
 
-    return np.exp(-2j * np.pi * dot_prod / profile.true_N)
+    return np.exp(-2j * np.pi * dot_prod / (profile.true_N ** 2))
 
 
     
