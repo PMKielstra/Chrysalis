@@ -2,13 +2,18 @@ from math import floor, log2
 
 import numpy as np
 
+def sum_pow(t):
+    return t + t ** 2 + t ** 3
+
 def mod_stack(profile, coords):
     stack = [np.mod(coords, 2)]
     logN = floor(log2(profile.N))
-    for _ in range(logN):
+    for _ in range(logN - 1):
         coords = (coords - stack[-1]) // 2
         stack.append(np.mod(coords, 2))
+    coords = (coords - stack[-1]) // 2
     assert max(np.ravel(coords)) == 0
+    assert min(np.ravel(coords)) == 0 
     split_stacks = [stack[i::profile.true_dimens] for i in range(profile.true_dimens)]
     split_pos = [sum((2 ** i) * x for i, x in enumerate(s)) for s in split_stacks]
     return np.float64(np.stack(split_pos, axis=0))
@@ -28,7 +33,7 @@ def K_from_coords_green(profile, leftstack, rightstack):
     else:
         kti = 1
     
-    return (np.exp(-1j * profile.true_N * np.pi * norm * kti) / norm)
+    return np.exp(-1j * profile.true_N * np.pi * norm * kti) / norm
 
 def K_from_coords_fourier(profile, leftstack, rightstack):
     dot_prod = np.sum(leftstack * rightstack, axis=0)
