@@ -35,12 +35,23 @@ def K_from_coords_green(profile, leftstack, rightstack):
     
     return np.exp(-1j * profile.true_N * np.pi * norm * kti) / norm
 
+def binary_inversion(profile, x):
+    y = np.zeros_like(x)
+    n = floor(log2(profile.N)) - 1
+    while np.max(x) > 0:
+        assert n >= 0
+        y += (2 ** n) * (x % 2)
+        x = (x - (x % 2)) // 2
+        n -= 1
+    return y
+
 def K_from_coords_fourier(profile, leftstack, rightstack):
+    leftstack, rightstack = binary_inversion(profile, leftstack), binary_inversion(profile, rightstack)
     dot_prod = np.sum(leftstack * rightstack, axis=0)
     dot_prod = np.swapaxes(dot_prod, 0, profile.axis_roll)
     dot_prod = np.swapaxes(dot_prod, profile.dimens, profile.dimens + profile.axis_roll)
 
-    return np.exp(-2j * np.pi * dot_prod / (profile.true_N ** 2))
+    return np.exp(-2j * np.pi * dot_prod / (profile.true_N))
 
 
     

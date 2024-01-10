@@ -85,7 +85,7 @@ def compressed_core_rank(profile, factor_forests):
         coords[i][l] = np.sort(coords[i][l])
     vecs = [K_from_coords(profile, c).ravel() for c in coords]
     storage_matrix = ragged_pad(vecs).T
-    return np.linalg.matrix_rank(storage_matrix), storage_matrix.shape
+    return np.linalg.matrix_rank(storage_matrix, tol=profile.eps), storage_matrix.shape
     
 
     
