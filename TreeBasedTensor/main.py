@@ -39,6 +39,7 @@ parser.add_argument("--flat", action="store_true")
 parser.add_argument("--largeLeaf", action="store_true")
 parser.add_argument("--kti", action="store_true")
 parser.add_argument("--fourier", action="store_true")
+parser.add_argument("--randomShift", type=float, default=0)
 args = parser.parse_args()
 
 PoolExecutor = ProcessPoolExecutor #MPIExecutor if args.mpi else ProcessPoolExecutor
@@ -63,7 +64,8 @@ with PoolExecutor() as pool:
             use_fake = not (args.matvec or args.accuracy),
             flat = args.flat,
             kill_trans_inv = args.kti,
-            fourier = args.fourier
+            fourier = args.fourier,
+            random_shift = args.randomShift
             )
         print(f"N: {N}")
         if args.flat:

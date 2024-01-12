@@ -1,4 +1,5 @@
 from math import floor
+import numpy as np
 
 BOTH = 0
 UP = -1
@@ -7,7 +8,7 @@ DOWN = 1
 class Profile:
     """Stores all the parameters necessary for a factorization."""
 
-    def __init__(self, N, dimens, eps, levels, distance=1, direction=BOTH, subsamples = 20, translation_invariant=False, flat=False, as_matrix = False, use_fake = False, verbose = False, boost_subsamples = True, processes=None, kill_trans_inv=False, fourier=False):
+    def __init__(self, N, dimens, eps, levels, distance=1, direction=BOTH, subsamples = 20, translation_invariant=False, flat=False, as_matrix = False, use_fake = False, verbose = False, boost_subsamples = True, processes=None, kill_trans_inv=False, fourier=False, random_shift=0):
         assert N > 0
         assert dimens > 0
         assert eps < 1
@@ -41,6 +42,13 @@ class Profile:
 
         self.kill_trans_inv = kill_trans_inv
         self.fourier = fourier
+        self.nonuniform = (random_shift != 0)
+        if self.nonuniform:
+            rand = np.random.default_rng()
+            self.rand_left = np.linspace(0, 1, num=N+1)
+            self.rand_right = np.linspace(0, N, num=N+1)
+            self.rand_left *= rand.uniform(low=1-random_shift, high=1+random_shift, size=N+1)
+            self.rand_right *= rand.uniform(low=1-random_shift, high=1+random_shift, size=N+1)
         
     def factor_index(self, is_source):
         return 0 if is_source else self.dimens

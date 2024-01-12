@@ -53,7 +53,15 @@ def K_from_coords_fourier(profile, leftstack, rightstack):
 
     return np.exp(-2j * np.pi * dot_prod / (profile.true_N))
 
+def K_from_coords_random_fourier(profile, leftstack, rightstack):
+    leftstack, rightstack = binary_inversion(profile, leftstack), binary_inversion(profile, rightstack)
+    leftstack, rightstack = profile.rand_left[leftstack.astype(int)], profile.rand_right[rightstack.astype(int)]
+    
+    dot_prod = np.sum(leftstack * rightstack, axis=0)
+    dot_prod = np.swapaxes(dot_prod, 0, profile.axis_roll)
+    dot_prod = np.swapaxes(dot_prod, profile.dimens, profile.dimens + profile.axis_roll)
 
+    return np.exp(-2j * np.pi * dot_prod)
     
 def K_from_coords(profile, coords_list):
     coords_list[0], coords_list[profile.axis_roll] = coords_list[profile.axis_roll], coords_list[0]
@@ -69,6 +77,8 @@ def K_from_coords(profile, coords_list):
         rightstack = np.float64(np.stack(coords[halflen:], axis=0))
 
     if profile.fourier:
+        if profile.nonuniform:
+            return K_from_coords_random_fourier(profile, leftstack, rightstack)
         return K_from_coords_fourier(profile, leftstack, rightstack)
     else:
         return K_from_coords_green(profile, leftstack, rightstack)
